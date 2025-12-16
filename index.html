@@ -792,9 +792,9 @@
 
     <!-- 統計 Modal -->
     <div id="stats-modal" class="fixed inset-0 modal-overlay z-50 hidden flex items-center justify-center p-4">
-        <div class="glass-card rounded-3xl p-6 w-full max-w-lg animate-slide">
+        <div class="glass-card rounded-3xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto hide-scrollbar animate-slide">
             <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-bold">學習統計</h2>
+                <h2 class="text-xl font-bold">📊 學習統計</h2>
                 <button onclick="closeStats()" class="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20">
                     <i class="fa-solid fa-times"></i>
                 </button>
@@ -823,9 +823,29 @@
                 </div>
             </div>
 
-            <button onclick="resetAllData()" class="w-full py-3 rounded-xl bg-red-500/20 text-red-400 font-bold hover:bg-red-500/30 transition">
-                <i class="fa-solid fa-trash-can mr-2"></i>重置所有數據
-            </button>
+            <!-- 已學單字列表 -->
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-sm text-gray-400">
+                        <i class="fa-solid fa-list mr-1"></i> 已學單字記錄
+                    </h3>
+                    <button onclick="toggleLearnedWords()" class="text-xs text-blue-400 hover:text-blue-300">
+                        <span id="toggle-words-text">展開</span> <i class="fa-solid fa-chevron-down" id="toggle-words-icon"></i>
+                    </button>
+                </div>
+                <div id="learned-words-list" class="hidden bg-white/5 rounded-xl p-4 max-h-48 overflow-y-auto hide-scrollbar">
+                    <!-- 動態生成 -->
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <button onclick="clearLearnedHistory()" class="w-full py-3 rounded-xl bg-amber-500/20 text-amber-400 font-bold hover:bg-amber-500/30 transition">
+                    <i class="fa-solid fa-eraser mr-2"></i>清除學習記錄（可重新學習）
+                </button>
+                <button onclick="resetAllData()" class="w-full py-3 rounded-xl bg-red-500/20 text-red-400 font-bold hover:bg-red-500/30 transition">
+                    <i class="fa-solid fa-trash-can mr-2"></i>重置所有數據
+                </button>
+            </div>
         </div>
     </div>
 
@@ -945,13 +965,45 @@
 
         // ===== 用戶數據 =====
         function loadUserData() {
-            if (!userData.xp) userData = { xp: 0, streak: 0, wordsLearned: [], totalCorrect: 0, totalAnswered: 0, lastActive: null };
+            if (!userData.xp) {
+                userData = { 
+                    xp: 0, 
+                    streak: 0, 
+                    wordsLearned: [],      // 學過的單字列表
+                    learnedHistory: {},    // 按主題分類的學習記錄
+                    totalCorrect: 0, 
+                    totalAnswered: 0, 
+                    lastActive: null 
+                };
+            }
+            // 兼容舊版本
+            if (!userData.learnedHistory) userData.learnedHistory = {};
+            
             updateUI();
         }
 
         function saveUserData() {
             localStorage.setItem('linguamax_user', JSON.stringify(userData));
             updateUI();
+        }
+
+        // 取得某主題已學過的單字
+        function getLearnedWordsForTopic(topic) {
+            return userData.learnedHistory[topic] || [];
+        }
+
+        // 儲存學過的單字到記錄
+        function saveLearnedWord(word, topic) {
+            if (!userData.learnedHistory[topic]) {
+                userData.learnedHistory[topic] = [];
+            }
+            if (!userData.learnedHistory[topic].includes(word)) {
+                userData.learnedHistory[topic].push(word);
+            }
+            if (!userData.wordsLearned.includes(word)) {
+                userData.wordsLearned.push(word);
+            }
+            saveUserData();
         }
 
         function updateUI() {
@@ -1236,9 +1288,9 @@
         // 呼叫 Gemini API
         async function callGeminiAPI(prompt) {
             const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-                method: 'POST',
+                    method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                    body: JSON.stringify({
                     contents: [{ parts: [{ text: prompt }] }],
                     generationConfig: {
                         temperature: 1.0,  // 提高隨機性
@@ -1246,8 +1298,8 @@
                         topK: 40,
                         maxOutputTokens: 2048
                     }
-                })
-            });
+                    })
+                });
                 
             if (!response.ok) {
                 const error = await response.json();
@@ -1282,11 +1334,15 @@
                     ? 'vocab' 
                     : APP_STATE.currentMode;
                 
+                // 合併持久化的學習記錄 + 當前 session 的記錄
+                const persistentHistory = getLearnedWordsForTopic(APP_STATE.currentTopic);
+                const allExcluded = [...new Set([...persistentHistory, ...APP_STATE.historyData])];
+                
                 const prompt = generatePrompt(
                     type,
                     APP_STATE.currentTopic,
                     document.getElementById('level-select').value,
-                    APP_STATE.historyData
+                    allExcluded
                 );
 
                 const data = await callGeminiAPI(prompt);
@@ -1367,11 +1423,10 @@
             
             addXP(xp);
             
-            // 記錄學過的單字
+            // 記錄學過的單字（持久化儲存）
             const word = APP_STATE.words[APP_STATE.currentIndex];
-            if (word && !userData.wordsLearned.includes(word.word)) {
-                userData.wordsLearned.push(word.word);
-                saveUserData();
+            if (word) {
+                saveLearnedWord(word.word, APP_STATE.currentTopic);
             }
 
             nextWord();
@@ -1860,11 +1915,70 @@
                 ? Math.round(userData.totalCorrect / userData.totalAnswered * 100) 
                 : 0;
             document.getElementById('stat-accuracy').textContent = accuracy + '%';
+            
+            // 更新已學單字列表
+            updateLearnedWordsList();
+            
             document.getElementById('stats-modal').classList.remove('hidden');
         }
 
         function closeStats() {
             document.getElementById('stats-modal').classList.add('hidden');
+        }
+
+        // 切換顯示已學單字
+        function toggleLearnedWords() {
+            const list = document.getElementById('learned-words-list');
+            const text = document.getElementById('toggle-words-text');
+            const icon = document.getElementById('toggle-words-icon');
+            
+            if (list.classList.contains('hidden')) {
+                list.classList.remove('hidden');
+                text.textContent = '收合';
+                icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+            } else {
+                list.classList.add('hidden');
+                text.textContent = '展開';
+                icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+            }
+        }
+
+        // 更新已學單字列表
+        function updateLearnedWordsList() {
+            const container = document.getElementById('learned-words-list');
+            const history = userData.learnedHistory || {};
+            
+            if (Object.keys(history).length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-sm text-center">還沒有學習記錄</p>';
+                return;
+            }
+
+            let html = '';
+            for (const [topic, words] of Object.entries(history)) {
+                if (words.length > 0) {
+                    html += `
+                        <div class="mb-3">
+                            <div class="text-xs text-gray-400 mb-1">${topic} (${words.length})</div>
+                            <div class="flex flex-wrap gap-1">
+                                ${words.map(w => `<span class="text-xs bg-white/10 px-2 py-1 rounded">${w}</span>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            container.innerHTML = html || '<p class="text-gray-500 text-sm text-center">還沒有學習記錄</p>';
+        }
+
+        // 清除學習記錄（但保留 XP 等數據）
+        function clearLearnedHistory() {
+            if (confirm('確定要清除學習記錄嗎？\n清除後可以重新學習所有單字，但 XP 和連續天數會保留。')) {
+                userData.learnedHistory = {};
+                userData.wordsLearned = [];
+                APP_STATE.historyData = [];
+                saveUserData();
+                updateLearnedWordsList();
+                alert('學習記錄已清除！');
+            }
         }
 
         // ===== 手機選單 =====
@@ -2032,11 +2146,20 @@
         });
 
         function resetAllData() {
-            if (confirm('確定要重置所有學習數據嗎？')) {
-                userData = { xp: 0, streak: 0, wordsLearned: [], totalCorrect: 0, totalAnswered: 0, lastActive: null };
+            if (confirm('確定要重置所有學習數據嗎？\n這會清除所有 XP、連續天數和學習記錄！')) {
+                userData = { 
+                    xp: 0, 
+                    streak: 0, 
+                    wordsLearned: [], 
+                    learnedHistory: {},
+                    totalCorrect: 0, 
+                    totalAnswered: 0, 
+                    lastActive: null 
+                };
                 APP_STATE.historyData = [];
                 saveUserData();
                 closeStats();
+                alert('所有數據已重置！');
             }
         }
     </script>
