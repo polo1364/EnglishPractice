@@ -377,12 +377,13 @@
 
                 <hr class="border-white/10 my-6">
 
-                <h3 class="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2">
+                <h3 class="text-sm font-bold text-gray-400 mb-3 flex items-center gap-2">
                     <i class="fa-solid fa-folder text-yellow-500"></i> 選擇學習主題
                 </h3>
-                <div id="mobile-topic-list" class="space-y-2">
+                <select id="mobile-topic-select" onchange="onMobileTopicChange()" 
+                    class="w-full bg-slate-800 border-2 border-slate-600 rounded-xl px-4 py-3 text-base font-semibold cursor-pointer hover:border-yellow-500 transition">
                     <!-- 動態生成 -->
-                </div>
+                </select>
             </aside>
             </div>
 
@@ -452,11 +453,15 @@
 
                 <hr class="border-white/10 my-6">
 
-                <h3 class="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2">
+                <h3 class="text-sm font-bold text-gray-400 mb-3 flex items-center gap-2">
                     <i class="fa-solid fa-folder text-yellow-500"></i> 選擇學習主題
                 </h3>
-                <div id="topic-list" class="space-y-2">
+                <select id="topic-select" onchange="onTopicChange()" 
+                    class="w-full bg-slate-800 border-2 border-slate-600 rounded-xl px-4 py-3 text-base font-semibold cursor-pointer hover:border-yellow-500 transition">
                     <!-- 動態生成 -->
+                </select>
+                <div id="topic-list" class="hidden">
+                    <!-- 保留給舊版相容 -->
                 </div>
 
                 <hr class="border-white/10 my-6">
@@ -895,7 +900,20 @@
                 { label: '💼 商務職場', value: 'Business' },
                 { label: '🏥 健康醫療', value: 'Health' },
                 { label: '💻 科技數位', value: 'Technology' },
-                { label: '🎬 休閒娛樂', value: 'Entertainment' }
+                { label: '🎬 休閒娛樂', value: 'Entertainment' },
+                { label: '🎓 校園學習', value: 'School & Education' },
+                { label: '🏋️ 運動健身', value: 'Sports & Fitness' },
+                { label: '🎨 藝術文化', value: 'Art & Culture' },
+                { label: '🌍 環境自然', value: 'Environment & Nature' },
+                { label: '👔 時尚穿搭', value: 'Fashion & Clothing' },
+                { label: '🏡 居家生活', value: 'Home & Living' },
+                { label: '💰 金融理財', value: 'Finance & Banking' },
+                { label: '⚖️ 法律政治', value: 'Law & Politics' },
+                { label: '🔬 科學研究', value: 'Science & Research' },
+                { label: '🎮 遊戲電競', value: 'Gaming & Esports' },
+                { label: '📱 社群媒體', value: 'Social Media' },
+                { label: '🚗 交通運輸', value: 'Transportation' },
+                { label: '😊 情緒心理', value: 'Emotions & Psychology' }
             ],
             quiz: [
                 { label: '🏠 日常生活', value: 'Daily Life' },
@@ -904,7 +922,17 @@
                 { label: '💼 商務職場', value: 'Business' },
                 { label: '🏥 健康醫療', value: 'Health' },
                 { label: '💻 科技數位', value: 'Technology' },
-                { label: '🎬 休閒娛樂', value: 'Entertainment' }
+                { label: '🎬 休閒娛樂', value: 'Entertainment' },
+                { label: '🎓 校園學習', value: 'School & Education' },
+                { label: '🏋️ 運動健身', value: 'Sports & Fitness' },
+                { label: '🎨 藝術文化', value: 'Art & Culture' },
+                { label: '🌍 環境自然', value: 'Environment & Nature' },
+                { label: '👔 時尚穿搭', value: 'Fashion & Clothing' },
+                { label: '🏡 居家生活', value: 'Home & Living' },
+                { label: '💰 金融理財', value: 'Finance & Banking' },
+                { label: '🔬 科學研究', value: 'Science & Research' },
+                { label: '🎮 遊戲電競', value: 'Gaming & Esports' },
+                { label: '😊 情緒心理', value: 'Emotions & Psychology' }
             ],
             typing: [
                 { label: '🏠 日常生活', value: 'Daily Life' },
@@ -912,14 +940,22 @@
                 { label: '🍔 美食餐飲', value: 'Food & Drink' },
                 { label: '💼 商務職場', value: 'Business' },
                 { label: '🏥 健康醫療', value: 'Health' },
-                { label: '💻 科技數位', value: 'Technology' }
+                { label: '💻 科技數位', value: 'Technology' },
+                { label: '🎓 校園學習', value: 'School & Education' },
+                { label: '🏋️ 運動健身', value: 'Sports & Fitness' },
+                { label: '🏡 居家生活', value: 'Home & Living' },
+                { label: '😊 情緒心理', value: 'Emotions & Psychology' }
             ],
             listening: [
                 { label: '🏠 日常生活', value: 'Daily Life' },
                 { label: '✈️ 旅遊出行', value: 'Travel' },
                 { label: '🍔 美食餐飲', value: 'Food & Drink' },
                 { label: '🛒 購物消費', value: 'Shopping' },
-                { label: '🌤️ 天氣氣候', value: 'Weather' }
+                { label: '🌤️ 天氣氣候', value: 'Weather' },
+                { label: '💼 商務職場', value: 'Business' },
+                { label: '🏥 健康醫療', value: 'Health' },
+                { label: '🎓 校園學習', value: 'School & Education' },
+                { label: '🚗 交通運輸', value: 'Transportation' }
             ],
             grammar: [
                 { label: '📗 現在式', value: 'Present Tense' },
@@ -927,7 +963,13 @@
                 { label: '📙 未來式', value: 'Future Tense' },
                 { label: '📕 被動語態', value: 'Passive Voice' },
                 { label: '📓 條件句', value: 'Conditionals' },
-                { label: '📒 情態動詞', value: 'Modals' }
+                { label: '📒 情態動詞', value: 'Modals' },
+                { label: '📔 完成式', value: 'Perfect Tense' },
+                { label: '📚 關係子句', value: 'Relative Clauses' },
+                { label: '📖 比較級最高級', value: 'Comparatives & Superlatives' },
+                { label: '📝 介系詞', value: 'Prepositions' },
+                { label: '📋 冠詞用法', value: 'Articles' },
+                { label: '📑 連接詞', value: 'Conjunctions' }
             ],
             chat: [
                 { label: '☕ 咖啡廳點餐', value: 'Coffee Shop' },
@@ -935,7 +977,19 @@
                 { label: '🛫 機場通關', value: 'Airport' },
                 { label: '🏨 飯店入住', value: 'Hotel Check-in' },
                 { label: '🍽️ 餐廳用餐', value: 'Restaurant' },
-                { label: '🏥 看醫生', value: 'Doctor Visit' }
+                { label: '🏥 看醫生', value: 'Doctor Visit' },
+                { label: '🛒 超市購物', value: 'Supermarket Shopping' },
+                { label: '🚕 搭計程車', value: 'Taking a Taxi' },
+                { label: '📞 電話客服', value: 'Customer Service Call' },
+                { label: '🏦 銀行開戶', value: 'Bank Account' },
+                { label: '📮 郵局寄件', value: 'Post Office' },
+                { label: '🎫 售票購票', value: 'Buying Tickets' },
+                { label: '🏠 租房看房', value: 'Renting Apartment' },
+                { label: '👋 認識新朋友', value: 'Meeting New People' },
+                { label: '🎉 派對社交', value: 'Party & Social' },
+                { label: '📱 科技問題求助', value: 'Tech Support' },
+                { label: '🏋️ 健身房諮詢', value: 'Gym Consultation' },
+                { label: '💇 美髮沙龍', value: 'Hair Salon' }
             ]
         };
 
@@ -1097,36 +1151,47 @@
         }
 
         function updateTopics() {
-            const container = document.getElementById('topic-list');
+            const select = document.getElementById('topic-select');
             const topics = TOPICS[APP_STATE.currentMode] || [];
             
-            container.innerHTML = topics.map((t, i) => `
-                <button onclick="selectTopic('${t.value}')" 
-                    data-value="${t.value}"
-                    class="topic-btn w-full text-left px-3 py-2.5 rounded-xl text-sm ${i === 0 ? 'bg-white/10 text-white' : 'text-gray-400 hover:bg-white/5'} transition">
-                    ${t.label}
-                </button>
+            // 更新下拉選單
+            select.innerHTML = topics.map((t, i) => `
+                <option value="${t.value}">${t.label}</option>
             `).join('');
 
             // 設定第一個主題為預設
             if (topics.length > 0) {
                 APP_STATE.currentTopic = topics[0].value;
+                select.value = topics[0].value;
             }
+            
+            // 同時更新手機版
+            updateMobileTopicSelect();
+        }
+
+        // 主題下拉選單變更
+        function onTopicChange() {
+            const select = document.getElementById('topic-select');
+            APP_STATE.currentTopic = select.value;
+            APP_STATE.historyData = [];
+            
+            // 同步手機版選單
+            const mobileSelect = document.getElementById('mobile-topic-select');
+            if (mobileSelect) mobileSelect.value = select.value;
+            
+            loadContent();
         }
 
         function selectTopic(topicValue) {
             APP_STATE.currentTopic = topicValue;
             APP_STATE.historyData = [];
             
-            // 更新桌面版和手機版的主題按鈕狀態
-            document.querySelectorAll('.topic-btn, .mobile-topic-btn').forEach(btn => {
-                btn.classList.remove('bg-white/10', 'text-white');
-                btn.classList.add('text-gray-400');
-                if (btn.dataset.value === topicValue) {
-                    btn.classList.add('bg-white/10', 'text-white');
-                    btn.classList.remove('text-gray-400');
-                }
-            });
+            // 更新下拉選單
+            const select = document.getElementById('topic-select');
+            if (select) select.value = topicValue;
+            
+            const mobileSelect = document.getElementById('mobile-topic-select');
+            if (mobileSelect) mobileSelect.value = topicValue;
 
             loadContent();
         }
@@ -1623,6 +1688,16 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
             if (word) speakText(word.word, 0.45);
         }
 
+        // 播放對話訊息
+        function speakChatMessage(btn, rate = 0.8) {
+            const text = btn.dataset.text;
+            if (text) {
+                // 還原 HTML 實體
+                const decodedText = text.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+                speakText(decodedText, rate);
+            }
+        }
+
         function checkListeningAnswer(btn, selected, correct) {
             if (APP_STATE.isAnswered) return;
             APP_STATE.isAnswered = true;
@@ -1720,12 +1795,18 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
                         <i class="fa-solid fa-robot text-lg"></i>
                     </div>
                     <div class="glass-card rounded-2xl rounded-tl-sm p-4 max-w-[80%]">
-                        <p class="text-lg">${chatInfo.greeting}</p>
+                        <div class="flex items-start justify-between gap-2">
+                            <p class="text-lg flex-1">${chatInfo.greeting}</p>
+                            <button onclick="speakChatMessage(this)" data-text="${chatInfo.greeting.replace(/"/g, '&quot;')}" 
+                                class="shrink-0 w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 hover:bg-blue-500/30 transition" title="播放語音">
+                                <i class="fa-solid fa-volume-high text-sm"></i>
+                            </button>
+                        </div>
                         <p class="text-sm text-gray-400 mt-2 border-t border-white/10 pt-2">${chatInfo.chinese}</p>
                         <p class="text-xs text-blue-400 mt-2"><i class="fa-solid fa-lightbulb mr-1"></i>提示：用英文回覆，練習對話！</p>
-                        </div>
                     </div>
-                `;
+                </div>
+            `;
         }
 
         async function sendChat() {
@@ -1776,14 +1857,28 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
                 const data = await callGeminiAPI(prompt);
                 document.getElementById(loadingId).remove();
 
-                // AI 回覆
+                // AI 回覆 - 轉義引號避免 HTML 問題
+                const safeReply = data.reply.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                
                 messagesContainer.innerHTML += `
                     <div class="flex gap-3 animate-slide">
                         <div class="w-10 h-10 bg-gradient-to-br from-rose-500 to-purple-500 rounded-full flex items-center justify-center shrink-0">
                             <i class="fa-solid fa-robot"></i>
                         </div>
                         <div class="glass-card rounded-2xl rounded-tl-sm p-4 max-w-[80%]">
-                            <p>${data.reply}</p>
+                            <div class="flex items-start justify-between gap-2">
+                                <p class="flex-1">${data.reply}</p>
+                                <div class="shrink-0 flex gap-1">
+                                    <button onclick="speakChatMessage(this, 0.6)" data-text="${safeReply}" 
+                                        class="w-8 h-8 bg-amber-500/20 rounded-full flex items-center justify-center text-amber-400 hover:bg-amber-500/30 transition" title="慢速播放">
+                                        <i class="fa-solid fa-volume-low text-xs"></i>
+                                    </button>
+                                    <button onclick="speakChatMessage(this, 0.85)" data-text="${safeReply}" 
+                                        class="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 hover:bg-blue-500/30 transition" title="正常播放">
+                                        <i class="fa-solid fa-volume-high text-sm"></i>
+                                    </button>
+                                </div>
+                            </div>
                             <p class="text-xs text-gray-500 mt-2">${data.chinese}</p>
                             ${data.feedback ? `<p class="text-xs text-yellow-400 mt-2 border-t border-white/10 pt-2">💡 ${data.feedback}</p>` : ''}
                             ${data.score ? `<div class="mt-2 flex items-center gap-2">
@@ -2051,16 +2146,31 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
         }
 
         function updateMobileTopics() {
-            const container = document.getElementById('mobile-topic-list');
+            updateMobileTopicSelect();
+        }
+
+        function updateMobileTopicSelect() {
+            const select = document.getElementById('mobile-topic-select');
+            if (!select) return;
+            
             const topics = TOPICS[APP_STATE.currentMode] || [];
             
-            container.innerHTML = topics.map((t, i) => `
-                <button onclick="selectTopic('${t.value}'); toggleMobileMenu();" 
-                    data-value="${t.value}"
-                    class="mobile-topic-btn w-full text-left px-3 py-2.5 rounded-xl text-sm ${t.value === APP_STATE.currentTopic ? 'bg-white/10 text-white' : 'text-gray-400 hover:bg-white/5'} transition">
-                    ${t.label}
-                </button>
+            select.innerHTML = topics.map(t => `
+                <option value="${t.value}" ${t.value === APP_STATE.currentTopic ? 'selected' : ''}>${t.label}</option>
             `).join('');
+        }
+
+        function onMobileTopicChange() {
+            const select = document.getElementById('mobile-topic-select');
+            APP_STATE.currentTopic = select.value;
+            APP_STATE.historyData = [];
+            
+            // 同步桌面版選單
+            const desktopSelect = document.getElementById('topic-select');
+            if (desktopSelect) desktopSelect.value = select.value;
+            
+            toggleMobileMenu();
+            loadContent();
         }
 
         // ===== 語音輸入功能 =====
