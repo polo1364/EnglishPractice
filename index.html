@@ -483,7 +483,14 @@
                     <div id="session-progress" class="mb-6 hidden">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-sm text-gray-400">學習進度</span>
-                            <span class="text-sm font-bold"><span id="current-idx">1</span> / <span id="total-items">5</span></span>
+                            <div class="flex items-center gap-3">
+                                <span class="text-sm font-bold"><span id="current-idx">1</span> / <span id="total-items">5</span></span>
+                                <button onclick="regenerateContent()" 
+                                    class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full flex items-center gap-1 transition"
+                                    title="換一批新單字">
+                                    <i class="fa-solid fa-shuffle"></i> 換一批
+                                </button>
+                            </div>
                         </div>
                         <div class="h-2 bg-white/10 rounded-full overflow-hidden">
                             <div id="session-bar" class="progress-fill h-full rounded-full" style="width: 20%"></div>
@@ -1066,6 +1073,20 @@
             loadContent();
         }
 
+        // 重新生成內容（換一批）
+        function regenerateContent() {
+            // 把當前的單字加入排除列表，確保下次不會重複
+            if (APP_STATE.words && APP_STATE.words.length > 0) {
+                APP_STATE.words.forEach(w => {
+                    if (!APP_STATE.historyData.includes(w.word)) {
+                        APP_STATE.historyData.push(w.word);
+                    }
+                });
+            }
+            APP_STATE.currentIndex = 0;
+            loadContent();
+        }
+
         // ===== Gemini API 直接呼叫 (不需要 server.js) =====
         const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
@@ -1078,25 +1099,74 @@
             'C1': '進階詞彙，包含慣用語和細微語意差異（約8000個單字）'
         };
 
+        // 隨機指令，增加內容多樣性
+        const VARIETY_INSTRUCTIONS = [
+            'Focus on less common but useful words that students often miss.',
+            'Include some phrasal verbs or idiomatic expressions.',
+            'Choose words that are practical for real conversations.',
+            'Include a mix of nouns, verbs, and adjectives.',
+            'Focus on words commonly used in movies and TV shows.',
+            'Include words that are often confused or mispronounced.',
+            'Choose words that have interesting etymology or stories.',
+            'Focus on words used in professional settings.',
+            'Include some compound words or collocations.',
+            'Choose words that sound similar but have different meanings.'
+        ];
+
+        // 取得隨機指令
+        function getRandomInstruction() {
+            return VARIETY_INSTRUCTIONS[Math.floor(Math.random() * VARIETY_INSTRUCTIONS.length)];
+        }
+
+        // 產生隨機種子字母，增加變化
+        function getRandomSeed() {
+            const letters = 'abcdefghijklmnopqrstuvwxyz';
+            const randomLetter = letters[Math.floor(Math.random() * letters.length)];
+            const seeds = [
+                `Start with words beginning with "${randomLetter.toUpperCase()}".`,
+                `Avoid words starting with common letters like A, B, C, E, S, T.`,
+                `Include at least one word with 3+ syllables.`,
+                `Include words from different word families.`,
+                `Mix formal and informal vocabulary.`,
+                ''  // 有時不加限制
+            ];
+            return seeds[Math.floor(Math.random() * seeds.length)];
+        }
+
         // 生成 Prompt
         function generatePrompt(type, topic, level, exclude, userMessage) {
             const excludeText = (exclude && exclude.length > 0) ? exclude.join(", ") : "None";
             const levelDesc = LEVEL_DESCRIPTIONS[level] || LEVEL_DESCRIPTIONS['B1'];
+            const randomInstruction = getRandomInstruction();
+            const randomSeed = getRandomSeed();
+            const timestamp = Date.now(); // 增加時間戳確保每次不同
+
+            // 常見單字黑名單（避免 AI 總是生成這些）
+            const commonWordsToAvoid = 'eat, drink, sleep, walk, run, talk, read, write, play, work, go, come, see, look, make, take, give, get, have, be, do, say, food, water, house, car, book, phone, computer, money, time, day, night, friend, family, school, office';
 
             switch (type) {
                 case 'vocab':
-                    return `You are an expert English vocabulary teacher creating content for a language learning app.
+                    return `You are an expert English vocabulary teacher. Generate UNIQUE and INTERESTING vocabulary.
 
 **Context:**
 - Topic: "${topic}"
 - CEFR Level: ${level} (${levelDesc})
-- Already learned words to EXCLUDE: [${excludeText}]
+- Request ID: ${timestamp} (generate different words each time)
 
-**Task:** Generate exactly 5 NEW vocabulary words that:
-1. Are relevant to the topic "${topic}"
-2. Match the ${level} difficulty level appropriately
-3. Are practical and commonly used
-4. Are NOT in the exclude list
+**IMPORTANT EXCLUSIONS - Do NOT use these words:**
+- Already learned: [${excludeText}]
+- Too common/basic: [${commonWordsToAvoid}]
+
+**Special Instructions for variety:**
+- ${randomInstruction}
+- ${randomSeed}
+
+**Task:** Generate exactly 5 UNIQUE vocabulary words that:
+1. Are specifically relevant to "${topic}"
+2. Match ${level} difficulty level
+3. Are NOT in any exclusion list above
+4. Are interesting and memorable
+5. Would surprise and engage the learner
 
 **Output Format (JSON only, no markdown):**
 {
@@ -1166,16 +1236,18 @@
         // 呼叫 Gemini API
         async function callGeminiAPI(prompt) {
             const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-                    method: 'POST',
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                body: JSON.stringify({
                     contents: [{ parts: [{ text: prompt }] }],
                     generationConfig: {
-                        temperature: 0.7,
+                        temperature: 1.0,  // 提高隨機性
+                        topP: 0.95,        // 增加多樣性
+                        topK: 40,
                         maxOutputTokens: 2048
                     }
-                    })
-                });
+                })
+            });
                 
             if (!response.ok) {
                 const error = await response.json();
