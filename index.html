@@ -1,0 +1,1972 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinguaMax - AI 英語學習系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #58cc02;
+            --primary-dark: #46a302;
+            --secondary: #1cb0f6;
+            --gold: #ffc800;
+            --danger: #ff4b4b;
+            --bg-dark: #131f24;
+            --bg-card: #1a2c35;
+            --text-light: #afafaf;
+        }
+
+        * { font-family: 'Nunito', sans-serif; }
+        
+        body {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #0f1a1f 100%);
+            min-height: 100vh;
+        }
+
+        .glass-card {
+            background: rgba(26, 44, 53, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .glow-green { box-shadow: 0 0 20px rgba(88, 204, 2, 0.3); }
+        .glow-blue { box-shadow: 0 0 20px rgba(28, 176, 246, 0.3); }
+        .glow-gold { box-shadow: 0 0 20px rgba(255, 200, 0, 0.3); }
+
+        /* Flashcard 3D 翻轉 */
+        .flashcard { perspective: 1500px; }
+        .flashcard-inner {
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+        .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+        .flashcard-face {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .flashcard-back { transform: rotateY(180deg); }
+
+        /* 進度條動畫 */
+        .progress-fill {
+            transition: width 0.5s ease-out;
+            background: linear-gradient(90deg, var(--primary), #7cd836);
+        }
+
+        /* 按鈕效果 */
+        .btn-primary {
+            background: var(--primary);
+            box-shadow: 0 4px 0 var(--primary-dark);
+            transition: all 0.1s;
+        }
+        .btn-primary:active {
+            box-shadow: 0 2px 0 var(--primary-dark);
+            transform: translateY(2px);
+        }
+
+        .btn-option {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.2);
+            transition: all 0.2s;
+        }
+        .btn-option:hover {
+            border-color: var(--secondary);
+            background: rgba(28, 176, 246, 0.1);
+        }
+        .btn-option.correct {
+            border-color: var(--primary) !important;
+            background: rgba(88, 204, 2, 0.2) !important;
+            animation: pulse-green 0.5s;
+        }
+        .btn-option.wrong {
+            border-color: var(--danger) !important;
+            background: rgba(255, 75, 75, 0.2) !important;
+            animation: shake 0.5s;
+        }
+
+        @keyframes pulse-green {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .animate-slide { animation: slideIn 0.5s ease-out; }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+
+        /* 統計卡片 */
+        .stat-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* XP 動畫 */
+        .xp-popup {
+            animation: xpFloat 1.5s ease-out forwards;
+        }
+        @keyframes xpFloat {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-50px) scale(1.2); }
+        }
+
+        /* 連續天數火焰 */
+        .streak-fire {
+            animation: fireGlow 1.5s ease-in-out infinite alternate;
+        }
+        @keyframes fireGlow {
+            from { filter: drop-shadow(0 0 5px #ff6b00); }
+            to { filter: drop-shadow(0 0 15px #ff9500); }
+        }
+
+        /* 聽力波形 */
+        .sound-wave {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            height: 30px;
+        }
+        .sound-wave span {
+            width: 4px;
+            background: var(--secondary);
+            border-radius: 2px;
+            animation: wave 1s ease-in-out infinite;
+        }
+        .sound-wave span:nth-child(1) { animation-delay: 0s; height: 40%; }
+        .sound-wave span:nth-child(2) { animation-delay: 0.1s; height: 70%; }
+        .sound-wave span:nth-child(3) { animation-delay: 0.2s; height: 100%; }
+        .sound-wave span:nth-child(4) { animation-delay: 0.3s; height: 70%; }
+        .sound-wave span:nth-child(5) { animation-delay: 0.4s; height: 40%; }
+
+        @keyframes wave {
+            0%, 100% { transform: scaleY(1); }
+            50% { transform: scaleY(0.5); }
+        }
+
+        /* 打字輸入 */
+        .typing-input {
+            background: transparent;
+            border-bottom: 3px solid var(--secondary);
+            color: white;
+            font-size: 1.5rem;
+            text-align: center;
+            outline: none;
+            caret-color: var(--secondary);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            backdrop-filter: blur(8px);
+            background: rgba(0,0,0,0.7);
+        }
+
+        /* 隱藏 scrollbar 但可滾動 */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 下拉選單修復 - 確保文字可見 */
+        select {
+            color: white !important;
+            background-color: rgba(30, 41, 59, 0.95) !important;
+        }
+        select option {
+            background-color: #1e293b !important;
+            color: white !important;
+            padding: 12px !important;
+        }
+        select:focus {
+            outline: 2px solid var(--primary);
+        }
+
+        /* 初學者友善 - 更大的字體和間距 */
+        .beginner-friendly {
+            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+
+        /* 提示標籤 */
+        .hint-tag {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #1e293b;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* 新手引導氣泡 */
+        .guide-bubble {
+            position: relative;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+        }
+        .guide-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 20px;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid #8b5cf6;
+        }
+    </style>
+</head>
+<body class="text-white overflow-hidden">
+
+    <!-- API Key Modal -->
+    <div id="key-modal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
+        <div class="glass-card rounded-3xl p-8 w-full max-w-md animate-slide">
+            <div class="text-center mb-6">
+                <div class="w-20 h-20 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-float">
+                    <i class="fa-solid fa-robot text-4xl"></i>
+                </div>
+                <h2 class="text-2xl font-black">歡迎來到 LinguaMax</h2>
+                <p class="text-gray-400 mt-2">輸入 Gemini API Key 開始學習</p>
+            </div>
+            <input type="password" id="api-key-input" 
+                class="w-full bg-white/10 border border-white/20 rounded-xl p-4 mb-4 text-white placeholder-gray-500 focus:border-green-500 focus:outline-none transition"
+                placeholder="AIzaSy...">
+            <button onclick="saveApiKey()" class="btn-primary w-full py-4 rounded-xl text-lg font-bold text-white">
+                開始學習 <i class="fa-solid fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 主畫面 -->
+    <div class="h-screen flex flex-col">
+        <!-- 頂部導航 -->
+        <header class="glass-card border-b border-white/10 px-4 py-3">
+            <div class="max-w-6xl mx-auto flex items-center justify-between">
+                <div class="flex items-center gap-3 md:gap-6">
+                    <!-- 手機版選單按鈕 -->
+                    <button onclick="toggleMobileMenu()" class="lg:hidden w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                        <i class="fa-solid fa-bars text-lg"></i>
+            </button>
+
+                    <h1 class="text-lg md:text-xl font-black bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
+                        LinguaMax
+                    </h1>
+                    
+                    <!-- 連續天數 -->
+                    <div class="hidden sm:flex items-center gap-2 bg-orange-500/20 px-3 py-1 rounded-full">
+                        <i class="fa-solid fa-fire streak-fire text-orange-500"></i>
+                        <span id="streak-count" class="font-bold text-orange-400">0</span>
+        </div>
+
+                    <!-- XP -->
+                    <div class="flex items-center gap-2 bg-yellow-500/20 px-3 py-1 rounded-full">
+                        <i class="fa-solid fa-star text-yellow-500"></i>
+                        <span id="xp-count" class="font-bold text-yellow-400">0 XP</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <!-- 等級選擇 -->
+                    <div class="relative">
+                        <label class="text-xs text-gray-400 absolute -top-5 left-0">難度等級</label>
+                        <select id="level-select" class="bg-slate-800 border-2 border-slate-600 rounded-xl px-4 py-2.5 text-base font-semibold cursor-pointer hover:border-green-500 transition min-w-[160px]">
+                            <option value="A1" selected>🌱 入門 (A1)</option>
+                            <option value="A2">🌿 初級 (A2)</option>
+                            <option value="B1">🌳 中級 (B1)</option>
+                            <option value="B2">🌲 中高級 (B2)</option>
+                            <option value="C1">🏔️ 進階 (C1)</option>
+                    </select>
+                    </div>
+
+                    <!-- 個人資料 -->
+                    <button onclick="openStats()" class="w-11 h-11 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center font-bold hover:scale-105 transition" title="學習統計">
+                        <i class="fa-solid fa-chart-line text-lg"></i>
+                </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 手機版選單 (覆蓋層) -->
+        <div id="mobile-menu" class="fixed inset-0 z-40 hidden lg:hidden">
+            <div class="absolute inset-0 bg-black/60" onclick="toggleMobileMenu()"></div>
+            <aside class="absolute left-0 top-0 bottom-0 w-72 glass-card border-r border-white/10 p-4 overflow-y-auto hide-scrollbar animate-slide">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-bold text-gray-400 flex items-center gap-2">
+                        <i class="fa-solid fa-book-open text-green-500"></i> 選擇學習模式
+                    </h3>
+                    <button onclick="toggleMobileMenu()" class="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+            </div>
+
+                <nav class="space-y-2" id="mobile-mode-nav">
+                    <button onclick="switchMode('flashcard'); toggleMobileMenu();" data-mode="flashcard" 
+                        class="mobile-mode-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-green-500/20 border-2 border-green-500 text-green-400">
+                        <i class="fa-solid fa-clone text-xl"></i>
+                        <div class="text-left">
+                            <div class="font-bold">單字閃卡</div>
+                            <div class="text-xs opacity-60">翻轉學習新單字</div>
+            </div>
+                    </button>
+                    <button onclick="switchMode('quiz'); toggleMobileMenu();" data-mode="quiz" 
+                        class="mobile-mode-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 border-2 border-transparent">
+                        <i class="fa-solid fa-circle-question text-xl text-blue-400"></i>
+                        <div class="text-left">
+                            <div class="font-bold">選擇題測驗</div>
+                            <div class="text-xs opacity-60">四選一快速練習</div>
+                        </div>
+                    </button>
+                    <button onclick="switchMode('typing'); toggleMobileMenu();" data-mode="typing" 
+                        class="mobile-mode-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 border-2 border-transparent">
+                        <i class="fa-solid fa-keyboard text-xl text-purple-400"></i>
+                        <div class="text-left">
+                            <div class="font-bold">拼寫練習</div>
+                            <div class="text-xs opacity-60">打字記憶單字</div>
+                        </div>
+                    </button>
+                    <button onclick="switchMode('listening'); toggleMobileMenu();" data-mode="listening" 
+                        class="mobile-mode-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 border-2 border-transparent">
+                        <i class="fa-solid fa-headphones text-xl text-cyan-400"></i>
+                        <div class="text-left">
+                            <div class="font-bold">聽力訓練</div>
+                            <div class="text-xs opacity-60">聽音辨義練習</div>
+                        </div>
+                    </button>
+                    <button onclick="switchMode('grammar'); toggleMobileMenu();" data-mode="grammar" 
+                        class="mobile-mode-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 border-2 border-transparent">
+                        <i class="fa-solid fa-spell-check text-xl text-amber-400"></i>
+                        <div class="text-left">
+                            <div class="font-bold">文法闘關</div>
+                            <div class="text-xs opacity-60">句型結構練習</div>
+                        </div>
+                    </button>
+                    <button onclick="switchMode('chat'); toggleMobileMenu();" data-mode="chat" 
+                        class="mobile-mode-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 border-2 border-transparent">
+                        <i class="fa-solid fa-comments text-xl text-rose-400"></i>
+                        <div class="text-left">
+                            <div class="font-bold">AI 對話</div>
+                            <div class="text-xs opacity-60">情境英語會話</div>
+                        </div>
+                    </button>
+                </nav>
+
+                <hr class="border-white/10 my-6">
+
+                <h3 class="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-folder text-yellow-500"></i> 選擇學習主題
+                </h3>
+                <div id="mobile-topic-list" class="space-y-2">
+                    <!-- 動態生成 -->
+                </div>
+            </aside>
+            </div>
+
+        <!-- 主內容區 -->
+        <div class="flex-1 flex overflow-hidden">
+            <!-- 側邊欄 (桌面版) -->
+            <aside class="w-72 glass-card border-r border-white/10 p-4 hidden lg:block overflow-y-auto hide-scrollbar">
+                <h3 class="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-green-500"></i> 選擇學習模式
+                </h3>
+                
+                <nav class="space-y-2" id="mode-nav">
+                    <button onclick="switchMode('flashcard')" data-mode="flashcard" 
+                        class="mode-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-green-500/20 border-2 border-green-500 text-green-400">
+                        <i class="fa-solid fa-clone text-xl"></i>
+                        <div class="text-left">
+                            <div class="font-bold">單字閃卡</div>
+                            <div class="text-xs opacity-60">翻轉學習新單字</div>
+            </div>
+                    </button>
+
+                    <button onclick="switchMode('quiz')" data-mode="quiz" 
+                        class="mode-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 border-2 border-transparent">
+                        <i class="fa-solid fa-circle-question text-xl text-blue-400"></i>
+                        <div class="text-left">
+                            <div class="font-bold">選擇題測驗</div>
+                            <div class="text-xs opacity-60">四選一快速練習</div>
+                        </div>
+                    </button>
+
+                    <button onclick="switchMode('typing')" data-mode="typing" 
+                        class="mode-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 border-2 border-transparent">
+                        <i class="fa-solid fa-keyboard text-xl text-purple-400"></i>
+                        <div class="text-left">
+                            <div class="font-bold">拼寫練習</div>
+                            <div class="text-xs opacity-60">打字記憶單字</div>
+                        </div>
+                    </button>
+
+                    <button onclick="switchMode('listening')" data-mode="listening" 
+                        class="mode-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 border-2 border-transparent">
+                        <i class="fa-solid fa-headphones text-xl text-cyan-400"></i>
+                        <div class="text-left">
+                            <div class="font-bold">聽力訓練</div>
+                            <div class="text-xs opacity-60">聽音辨義練習</div>
+                        </div>
+                    </button>
+
+                    <button onclick="switchMode('grammar')" data-mode="grammar" 
+                        class="mode-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 border-2 border-transparent">
+                        <i class="fa-solid fa-spell-check text-xl text-amber-400"></i>
+                        <div class="text-left">
+                            <div class="font-bold">文法闖關</div>
+                            <div class="text-xs opacity-60">句型結構練習</div>
+                        </div>
+                    </button>
+
+                    <button onclick="switchMode('chat')" data-mode="chat" 
+                        class="mode-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 border-2 border-transparent">
+                        <i class="fa-solid fa-comments text-xl text-rose-400"></i>
+                        <div class="text-left">
+                            <div class="font-bold">AI 對話</div>
+                            <div class="text-xs opacity-60">情境英語會話</div>
+                        </div>
+                    </button>
+                </nav>
+
+                <hr class="border-white/10 my-6">
+
+                <h3 class="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-folder text-yellow-500"></i> 選擇學習主題
+                </h3>
+                <div id="topic-list" class="space-y-2">
+                    <!-- 動態生成 -->
+                </div>
+
+                <hr class="border-white/10 my-6">
+
+                <!-- 今日進度 -->
+                <div class="glass-card rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm font-bold">今日目標</span>
+                        <span class="text-xs text-gray-400"><span id="today-learned">0</span>/20 單字</span>
+                    </div>
+                    <div class="h-3 bg-white/10 rounded-full overflow-hidden">
+                        <div id="daily-progress" class="progress-fill h-full rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 主學習區 -->
+            <main class="flex-1 overflow-y-auto hide-scrollbar p-6">
+                <div class="max-w-3xl mx-auto">
+                    
+                    <!-- 載入中 -->
+                    <div id="loading" class="hidden fixed inset-0 bg-black/50 z-40 flex items-center justify-center">
+                        <div class="text-center">
+                            <div class="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                            <p class="mt-4 font-bold text-lg">AI 正在生成學習內容...</p>
+                        </div>
+                    </div>
+
+                    <!-- 學習進度條 -->
+                    <div id="session-progress" class="mb-6 hidden">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-400">學習進度</span>
+                            <span class="text-sm font-bold"><span id="current-idx">1</span> / <span id="total-items">5</span></span>
+                        </div>
+                        <div class="h-2 bg-white/10 rounded-full overflow-hidden">
+                            <div id="session-bar" class="progress-fill h-full rounded-full" style="width: 20%"></div>
+                        </div>
+                    </div>
+
+                    <!-- 閃卡模式 -->
+                    <div id="view-flashcard" class="view-section">
+                        <!-- 新手提示 -->
+                        <div id="flashcard-guide" class="guide-bubble mb-6 text-center max-w-md mx-auto">
+                            <i class="fa-solid fa-hand-pointer mr-2"></i>
+                            <strong>提示：</strong>點擊卡片可以翻轉查看中文意思！
+                            <button onclick="this.parentElement.style.display='none'" class="ml-2 opacity-70 hover:opacity-100">✕</button>
+                        </div>
+
+                        <div class="flashcard h-80 md:h-[420px] cursor-pointer mx-auto max-w-lg" onclick="flipCard()">
+                            <div class="flashcard-inner relative w-full h-full">
+                                <!-- 正面 -->
+                                <div class="flashcard-face flashcard-front absolute w-full h-full glass-card rounded-3xl flex flex-col items-center justify-center p-8">
+                                    <span id="card-pos" class="text-base px-4 py-1.5 rounded-full bg-blue-500/20 text-blue-400 mb-4 font-semibold"></span>
+                                    <h2 id="card-word" class="text-5xl md:text-6xl font-black mb-6 text-center"></h2>
+                                    
+                                    <!-- 語音播放按鈕組 -->
+                                    <div class="flex items-center gap-3 mt-2">
+                                        <button onclick="event.stopPropagation(); speakSlow()" 
+                                            class="w-14 h-14 bg-amber-500/20 border-2 border-amber-500/50 rounded-full flex flex-col items-center justify-center hover:scale-110 transition" 
+                                            title="慢速播放">
+                                            <i class="fa-solid fa-volume-low text-amber-400 text-lg"></i>
+                                            <span class="text-[10px] text-amber-400 mt-0.5">慢速</span>
+                                        </button>
+                                        <button onclick="event.stopPropagation(); speakNormal()" 
+                                            class="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex flex-col items-center justify-center hover:scale-110 transition shadow-lg" 
+                                            title="正常速度播放">
+                                            <i class="fa-solid fa-volume-high text-white text-2xl"></i>
+                                        </button>
+                                        <button onclick="event.stopPropagation(); speakWord()" 
+                                            class="w-14 h-14 bg-green-500/20 border-2 border-green-500/50 rounded-full flex flex-col items-center justify-center hover:scale-110 transition" 
+                                            title="重複播放兩次">
+                                            <i class="fa-solid fa-repeat text-green-400 text-lg"></i>
+                                            <span class="text-[10px] text-green-400 mt-0.5">x2</span>
+                                        </button>
+                                    </div>
+                                    
+                                    <p class="text-gray-400 mt-6 text-base flex items-center gap-2">
+                                        <i class="fa-solid fa-hand-pointer animate-bounce"></i>
+                                        點擊卡片翻轉
+                                    </p>
+                                </div>
+                                <!-- 背面 -->
+                                <div class="flashcard-face flashcard-back absolute w-full h-full glass-card rounded-3xl flex flex-col items-center justify-center p-8 glow-green">
+                                    <h3 id="card-mean" class="text-3xl md:text-4xl font-bold text-green-400 mb-6 text-center"></h3>
+                                    <div class="bg-white/5 rounded-xl p-4 w-full">
+                                        <p class="text-sm text-gray-400 mb-1">例句：</p>
+                                        <p id="card-example" class="text-center text-gray-200 text-lg italic mb-2"></p>
+                                        <p id="card-trans" class="text-center text-gray-400 text-base"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 閃卡控制按鈕 - 更大更清楚 -->
+                        <div class="mt-8 text-center text-gray-400 text-sm mb-3">
+                            <i class="fa-solid fa-lightbulb text-yellow-500 mr-1"></i>
+                            翻轉卡片後，選擇你對這個單字的熟悉程度：
+                        </div>
+                        <div class="flex justify-center gap-3 md:gap-4">
+                            <button onclick="rateCard('hard')" class="flex-1 max-w-[160px] py-4 md:py-5 rounded-2xl bg-red-500/20 border-2 border-red-500/50 text-red-400 font-bold hover:bg-red-500/30 hover:scale-105 transition text-base md:text-lg">
+                                <i class="fa-solid fa-rotate-right mr-2"></i>再學一次
+                            </button>
+                            <button onclick="rateCard('good')" class="flex-1 max-w-[160px] py-4 md:py-5 rounded-2xl bg-yellow-500/20 border-2 border-yellow-500/50 text-yellow-400 font-bold hover:bg-yellow-500/30 hover:scale-105 transition text-base md:text-lg">
+                                <i class="fa-solid fa-check mr-2"></i>有印象
+                            </button>
+                            <button onclick="rateCard('easy')" class="flex-1 max-w-[160px] py-4 md:py-5 rounded-2xl bg-green-500/20 border-2 border-green-500/50 text-green-400 font-bold hover:bg-green-500/30 hover:scale-105 transition text-base md:text-lg">
+                                <i class="fa-solid fa-star mr-2"></i>很熟悉
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 選擇題模式 -->
+                    <div id="view-quiz" class="view-section hidden">
+                        <div class="glass-card rounded-3xl p-6 md:p-8 animate-slide">
+                            <div class="text-center mb-8">
+                                <div class="inline-block bg-blue-500/20 text-blue-400 px-4 py-2 rounded-full text-sm font-semibold mb-4">
+                                    <i class="fa-solid fa-circle-question mr-2"></i>選擇題
+                                </div>
+                                <p class="text-gray-400 mb-4 text-base">這個英文單字是什麼意思？</p>
+                                <h2 id="quiz-word" class="text-4xl md:text-5xl font-black mb-4"></h2>
+                                
+                                <!-- 語音按鈕組 -->
+                                <div class="flex items-center justify-center gap-3">
+                                    <button onclick="speakSlow()" class="bg-amber-500/20 border border-amber-500/50 px-4 py-2 rounded-full text-amber-400 font-semibold hover:scale-105 transition text-sm">
+                                        <i class="fa-solid fa-volume-low mr-1"></i>慢速
+                                    </button>
+                                    <button onclick="speakNormal()" class="bg-gradient-to-r from-blue-500 to-cyan-500 px-6 py-3 rounded-full text-white font-semibold hover:scale-105 transition">
+                                        <i class="fa-solid fa-volume-high mr-2"></i>聽發音
+                                    </button>
+                                    <button onclick="speakWord()" class="bg-green-500/20 border border-green-500/50 px-4 py-2 rounded-full text-green-400 font-semibold hover:scale-105 transition text-sm">
+                                        <i class="fa-solid fa-repeat mr-1"></i>x2
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="text-center text-gray-400 text-sm mb-4">
+                                <i class="fa-solid fa-hand-pointer mr-1"></i>點選下方正確答案
+                            </p>
+                            <div id="quiz-options" class="space-y-3 max-w-lg mx-auto">
+                                <!-- 選項動態生成 -->
+                            </div>
+                            <div id="quiz-feedback" class="hidden mt-6 p-5 rounded-2xl text-center text-lg">
+                                <!-- 回饋 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 拼寫模式 -->
+                    <div id="view-typing" class="view-section hidden">
+                        <div class="glass-card rounded-3xl p-8 animate-slide">
+                            <div class="text-center mb-8">
+                                <span class="text-sm text-gray-400 mb-2 block">請根據中文意思拼寫英文單字</span>
+                                <h2 id="typing-hint" class="text-3xl font-bold text-green-400 mb-2"></h2>
+                                <p id="typing-pos" class="text-gray-500"></p>
+                            </div>
+
+                            <div class="flex justify-center gap-3 mb-8">
+                                <button onclick="speakSlow()" 
+                                    class="w-14 h-14 bg-amber-500/20 border-2 border-amber-500/50 rounded-full flex flex-col items-center justify-center hover:scale-110 transition"
+                                    title="慢速播放">
+                                    <i class="fa-solid fa-volume-low text-amber-400"></i>
+                                    <span class="text-[9px] text-amber-400">慢速</span>
+                                </button>
+                                <button onclick="speakNormal()" 
+                                    class="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center hover:scale-110 transition shadow-lg"
+                                    title="正常速度">
+                                    <i class="fa-solid fa-volume-high text-2xl text-white"></i>
+                                </button>
+                                <button onclick="speakWord()" 
+                                    class="w-14 h-14 bg-green-500/20 border-2 border-green-500/50 rounded-full flex flex-col items-center justify-center hover:scale-110 transition"
+                                    title="播放兩次">
+                                    <i class="fa-solid fa-repeat text-green-400"></i>
+                                    <span class="text-[9px] text-green-400">x2</span>
+                                </button>
+                            </div>
+
+                            <!-- 輸入區域 (打字 + 語音) -->
+                            <div class="relative max-w-md mx-auto">
+                                <input type="text" id="typing-input" 
+                                    class="typing-input w-full py-2 pr-14"
+                                    placeholder="輸入或說出英文..."
+                                    autocomplete="off"
+                                    onkeypress="if(event.key==='Enter') checkTyping()">
+                                <!-- 語音輸入按鈕 -->
+                                <button onclick="startVoiceInput('typing-input')" id="typing-mic-btn"
+                                    class="absolute right-0 bottom-1 w-12 h-12 bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center hover:scale-110 transition shadow-lg"
+                                    title="點擊說出答案">
+                                    <i class="fa-solid fa-microphone text-xl"></i>
+                                </button>
+                            </div>
+                            <p class="text-center text-gray-500 text-xs mt-2">
+                                <i class="fa-solid fa-microphone mr-1"></i>點擊麥克風可以用說的
+                            </p>
+
+                            <div id="typing-feedback" class="hidden mt-6 p-4 rounded-xl text-center"></div>
+
+                            <!-- 語音辨識狀態 -->
+                            <div id="voice-status" class="hidden mt-4 text-center">
+                                <div class="inline-flex items-center gap-2 bg-red-500/20 text-red-400 px-4 py-2 rounded-full">
+                                    <span class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+                                    <span>正在聆聽...</span>
+                                </div>
+                            </div>
+
+                            <button onclick="checkTyping()" class="btn-primary w-full max-w-md mx-auto block mt-6 py-4 rounded-xl font-bold text-lg">
+                                確認答案
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 聽力模式 -->
+                    <div id="view-listening" class="view-section hidden">
+                        <div class="glass-card rounded-3xl p-8 animate-slide">
+                            <div class="text-center mb-8">
+                                <span class="text-sm text-gray-400 mb-4 block">仔細聆聽，選出你聽到的單字</span>
+                                
+                                <div class="flex items-center justify-center gap-4">
+                                    <!-- 慢速播放 -->
+                                    <button onclick="replayListeningSlow()" 
+                                        class="w-16 h-16 bg-amber-500/20 border-2 border-amber-500/50 rounded-full flex flex-col items-center justify-center hover:scale-110 transition"
+                                        title="超慢速播放">
+                                        <i class="fa-solid fa-volume-low text-amber-400 text-xl"></i>
+                                        <span class="text-[10px] text-amber-400">慢速</span>
+                                    </button>
+                                    
+                                    <!-- 主播放按鈕 -->
+                                    <button onclick="playListeningWord()" class="w-24 h-24 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex flex-col items-center justify-center glow-blue hover:scale-105 transition">
+                                        <i class="fa-solid fa-play text-4xl"></i>
+                                        <span class="text-xs mt-1">播放</span>
+                                    </button>
+                                    
+                                    <!-- 重複播放 -->
+                                    <button onclick="playListeningWord(); setTimeout(playListeningWord, 1500);" 
+                                        class="w-16 h-16 bg-green-500/20 border-2 border-green-500/50 rounded-full flex flex-col items-center justify-center hover:scale-110 transition"
+                                        title="播放兩次">
+                                        <i class="fa-solid fa-repeat text-green-400 text-xl"></i>
+                                        <span class="text-[10px] text-green-400">x2</span>
+                                    </button>
+                                </div>
+
+                                <div class="sound-wave justify-center mt-4 hidden" id="sound-waves">
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                </div>
+                                
+                                <p class="text-gray-500 text-xs mt-3">
+                                    <i class="fa-solid fa-lightbulb text-yellow-500 mr-1"></i>
+                                    聽不清楚？點「慢速」按鈕
+                                </p>
+                            </div>
+
+                            <div id="listening-options" class="grid grid-cols-2 gap-4">
+                                <!-- 選項 -->
+                            </div>
+
+                            <div id="listening-feedback" class="hidden mt-6 p-4 rounded-xl text-center"></div>
+                        </div>
+                    </div>
+
+                    <!-- 文法模式 -->
+                    <div id="view-grammar" class="view-section hidden">
+                        <div class="glass-card rounded-3xl p-8 animate-slide">
+                            <div class="mb-6">
+                                <span class="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-bold">
+                                    <i class="fa-solid fa-lightbulb mr-1"></i> 文法重點
+                                </span>
+                                <h3 id="grammar-concept" class="text-2xl font-bold mt-3"></h3>
+                                <p id="grammar-explanation" class="text-gray-400 mt-2"></p>
+                            </div>
+
+                            <div id="grammar-quiz" class="space-y-6">
+                                <!-- 文法題目 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI 對話模式 -->
+            <div id="view-chat" class="view-section hidden h-full flex flex-col">
+                        <div class="glass-card rounded-3xl flex-1 flex flex-col overflow-hidden">
+                            <!-- 對話情境 -->
+                            <div class="p-4 border-b border-white/10 bg-gradient-to-r from-rose-500/20 to-purple-500/20">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-12 h-12 bg-gradient-to-br from-rose-500 to-purple-500 rounded-full flex items-center justify-center">
+                                        <i class="fa-solid fa-user-tie text-xl"></i>
+                </div>
+                                    <div>
+                                        <h3 id="chat-scenario" class="font-bold">情境對話</h3>
+                                        <p class="text-xs text-gray-400">AI 英語教練</p>
+            </div>
+                                </div>
+                            </div>
+
+                            <!-- 對話區 -->
+                            <div id="chat-messages" class="flex-1 overflow-y-auto hide-scrollbar p-4 space-y-4">
+                                <!-- 訊息 -->
+                            </div>
+
+                            <!-- 輸入區 -->
+                            <div class="p-4 border-t border-white/10">
+                                <div class="flex gap-2">
+                                    <!-- 語音輸入按鈕 -->
+                                    <button onclick="startVoiceInput('chat-input')" id="chat-mic-btn"
+                                        class="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center hover:scale-110 transition shrink-0"
+                                        title="點擊說英文">
+                                        <i class="fa-solid fa-microphone text-lg"></i>
+                                    </button>
+                                    <input type="text" id="chat-input" 
+                                        class="flex-1 bg-white/10 border border-white/20 rounded-full px-5 py-3 focus:border-rose-500 focus:outline-none transition text-base"
+                                        placeholder="說英文或打字..."
+                                        onkeypress="if(event.key==='Enter') sendChat()">
+                                    <button onclick="sendChat()" class="w-12 h-12 bg-gradient-to-r from-rose-500 to-purple-500 rounded-full flex items-center justify-center hover:opacity-90 hover:scale-105 transition shrink-0" title="發送">
+                                        <i class="fa-solid fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-2 text-center">
+                                    <i class="fa-solid fa-microphone text-red-400 mr-1"></i>點麥克風用說的 · 
+                                    <i class="fa-solid fa-keyboard text-blue-400 mr-1"></i>或直接打字
+                                </p>
+                                <!-- 語音辨識狀態 -->
+                                <div id="chat-voice-status" class="hidden mt-2 text-center">
+                                    <div class="inline-flex items-center gap-2 bg-red-500/20 text-red-400 px-4 py-2 rounded-full text-sm">
+                                        <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                                        <span>正在聆聽您說的英文...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+        </div>
+    </main>
+        </div>
+    </div>
+
+    <!-- 統計 Modal -->
+    <div id="stats-modal" class="fixed inset-0 modal-overlay z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-card rounded-3xl p-6 w-full max-w-lg animate-slide">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold">學習統計</h2>
+                <button onclick="closeStats()" class="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="stat-card rounded-xl p-4 text-center">
+                    <i class="fa-solid fa-fire text-3xl text-orange-500 mb-2"></i>
+                    <div class="text-2xl font-bold" id="stat-streak">0</div>
+                    <div class="text-xs text-gray-400">連續天數</div>
+                </div>
+                <div class="stat-card rounded-xl p-4 text-center">
+                    <i class="fa-solid fa-star text-3xl text-yellow-500 mb-2"></i>
+                    <div class="text-2xl font-bold" id="stat-xp">0</div>
+                    <div class="text-xs text-gray-400">總 XP</div>
+                </div>
+                <div class="stat-card rounded-xl p-4 text-center">
+                    <i class="fa-solid fa-book text-3xl text-green-500 mb-2"></i>
+                    <div class="text-2xl font-bold" id="stat-words">0</div>
+                    <div class="text-xs text-gray-400">已學單字</div>
+                </div>
+                <div class="stat-card rounded-xl p-4 text-center">
+                    <i class="fa-solid fa-bullseye text-3xl text-blue-500 mb-2"></i>
+                    <div class="text-2xl font-bold" id="stat-accuracy">0%</div>
+                    <div class="text-xs text-gray-400">正確率</div>
+                </div>
+            </div>
+
+            <button onclick="resetAllData()" class="w-full py-3 rounded-xl bg-red-500/20 text-red-400 font-bold hover:bg-red-500/30 transition">
+                <i class="fa-solid fa-trash-can mr-2"></i>重置所有數據
+            </button>
+        </div>
+    </div>
+
+    <!-- 完成動畫 Modal -->
+    <div id="complete-modal" class="fixed inset-0 modal-overlay z-50 hidden flex items-center justify-center p-4">
+        <div class="text-center animate-slide">
+            <div class="text-8xl mb-4">🎉</div>
+            <h2 class="text-3xl font-black mb-2">太棒了！</h2>
+            <p class="text-gray-400 mb-4">你完成了這一輪學習</p>
+            <div class="text-5xl font-black text-green-400 mb-6">+<span id="earned-xp">50</span> XP</div>
+            <button onclick="continuelearning()" class="btn-primary px-8 py-4 rounded-xl text-lg font-bold">
+                繼續學習 <i class="fa-solid fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 音效 -->
+    <audio id="sound-correct" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3" preload="auto"></audio>
+    <audio id="sound-wrong" src="https://assets.mixkit.co/active_storage/sfx/2001/2001-preview.mp3" preload="auto"></audio>
+
+    <script>
+        // ===== 全域狀態 =====
+        const APP_STATE = {
+            currentMode: 'flashcard',
+            currentTopic: 'Daily Life',  // 傳給 API 的英文值
+            currentIndex: 0,
+            words: [],
+            historyData: [],
+            isFlipped: false,
+            isAnswered: false,
+            totalCorrect: 0,
+            totalAnswered: 0
+        };
+
+        // 主題設定 - label 顯示中文, value 傳給 API
+        const TOPICS = {
+            flashcard: [
+                { label: '🏠 日常生活', value: 'Daily Life' },
+                { label: '✈️ 旅遊出行', value: 'Travel' },
+                { label: '🍔 美食餐飲', value: 'Food & Drink' },
+                { label: '💼 商務職場', value: 'Business' },
+                { label: '🏥 健康醫療', value: 'Health' },
+                { label: '💻 科技數位', value: 'Technology' },
+                { label: '🎬 休閒娛樂', value: 'Entertainment' }
+            ],
+            quiz: [
+                { label: '🏠 日常生活', value: 'Daily Life' },
+                { label: '✈️ 旅遊出行', value: 'Travel' },
+                { label: '🍔 美食餐飲', value: 'Food & Drink' },
+                { label: '💼 商務職場', value: 'Business' },
+                { label: '🏥 健康醫療', value: 'Health' },
+                { label: '💻 科技數位', value: 'Technology' },
+                { label: '🎬 休閒娛樂', value: 'Entertainment' }
+            ],
+            typing: [
+                { label: '🏠 日常生活', value: 'Daily Life' },
+                { label: '✈️ 旅遊出行', value: 'Travel' },
+                { label: '🍔 美食餐飲', value: 'Food & Drink' },
+                { label: '💼 商務職場', value: 'Business' },
+                { label: '🏥 健康醫療', value: 'Health' },
+                { label: '💻 科技數位', value: 'Technology' }
+            ],
+            listening: [
+                { label: '🏠 日常生活', value: 'Daily Life' },
+                { label: '✈️ 旅遊出行', value: 'Travel' },
+                { label: '🍔 美食餐飲', value: 'Food & Drink' },
+                { label: '🛒 購物消費', value: 'Shopping' },
+                { label: '🌤️ 天氣氣候', value: 'Weather' }
+            ],
+            grammar: [
+                { label: '📗 現在式', value: 'Present Tense' },
+                { label: '📘 過去式', value: 'Past Tense' },
+                { label: '📙 未來式', value: 'Future Tense' },
+                { label: '📕 被動語態', value: 'Passive Voice' },
+                { label: '📓 條件句', value: 'Conditionals' },
+                { label: '📒 情態動詞', value: 'Modals' }
+            ],
+            chat: [
+                { label: '☕ 咖啡廳點餐', value: 'Coffee Shop' },
+                { label: '💼 求職面試', value: 'Job Interview' },
+                { label: '🛫 機場通關', value: 'Airport' },
+                { label: '🏨 飯店入住', value: 'Hotel Check-in' },
+                { label: '🍽️ 餐廳用餐', value: 'Restaurant' },
+                { label: '🏥 看醫生', value: 'Doctor Visit' }
+            ]
+        };
+
+        let apiKey = localStorage.getItem('gemini_api_key');
+        let userData = JSON.parse(localStorage.getItem('linguamax_user') || '{}');
+
+        // ===== 初始化 =====
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!apiKey) {
+                document.getElementById('key-modal').classList.remove('hidden');
+            } else {
+                document.getElementById('key-modal').classList.add('hidden');
+                initApp();
+            }
+        });
+
+        function saveApiKey() {
+            const val = document.getElementById('api-key-input').value.trim();
+            if (val) {
+                apiKey = val;
+                localStorage.setItem('gemini_api_key', apiKey);
+                document.getElementById('key-modal').classList.add('hidden');
+                initApp();
+            }
+        }
+
+        function initApp() {
+            loadUserData();
+            updateTopics();
+            loadContent();
+            checkStreak();
+        }
+
+        // ===== 用戶數據 =====
+        function loadUserData() {
+            if (!userData.xp) userData = { xp: 0, streak: 0, wordsLearned: [], totalCorrect: 0, totalAnswered: 0, lastActive: null };
+            updateUI();
+        }
+
+        function saveUserData() {
+            localStorage.setItem('linguamax_user', JSON.stringify(userData));
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('xp-count').textContent = userData.xp + ' XP';
+            document.getElementById('streak-count').textContent = userData.streak;
+            document.getElementById('today-learned').textContent = Math.min(userData.wordsLearned?.length || 0, 20);
+            document.getElementById('daily-progress').style.width = Math.min((userData.wordsLearned?.length || 0) / 20 * 100, 100) + '%';
+        }
+
+        function checkStreak() {
+            const today = new Date().toDateString();
+            const lastActive = userData.lastActive;
+            
+            if (lastActive) {
+                const lastDate = new Date(lastActive);
+                const daysDiff = Math.floor((new Date(today) - lastDate) / (1000 * 60 * 60 * 24));
+                
+                if (daysDiff > 1) {
+                    userData.streak = 0; // 斷連
+                }
+            }
+        }
+
+        function addXP(amount) {
+            userData.xp += amount;
+            userData.lastActive = new Date().toDateString();
+            
+            // 更新連續天數
+            const today = new Date().toDateString();
+            if (userData.lastActive !== today) {
+                userData.streak++;
+            }
+            
+            saveUserData();
+            showXPPopup(amount);
+        }
+
+        function showXPPopup(amount) {
+            const popup = document.createElement('div');
+            popup.className = 'xp-popup fixed top-20 left-1/2 -translate-x-1/2 text-2xl font-bold text-yellow-400 z-50';
+            popup.textContent = `+${amount} XP`;
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 1500);
+        }
+
+        // ===== 模式切換 =====
+        function switchMode(mode) {
+            APP_STATE.currentMode = mode;
+            APP_STATE.historyData = [];
+            APP_STATE.currentIndex = 0;
+
+            // 更新桌面版導航 UI
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.remove('bg-green-500/20', 'border-green-500', 'text-green-400');
+                btn.classList.add('border-transparent');
+                if (btn.dataset.mode === mode) {
+                    btn.classList.add('bg-green-500/20', 'border-green-500', 'text-green-400');
+                    btn.classList.remove('border-transparent');
+                }
+            });
+
+            // 更新手機版導航 UI
+            document.querySelectorAll('.mobile-mode-btn').forEach(btn => {
+                btn.classList.remove('bg-green-500/20', 'border-green-500', 'text-green-400');
+                btn.classList.add('border-transparent');
+                if (btn.dataset.mode === mode) {
+                    btn.classList.add('bg-green-500/20', 'border-green-500', 'text-green-400');
+                    btn.classList.remove('border-transparent');
+                }
+            });
+
+            // 顯示對應視圖
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`view-${mode}`).classList.remove('hidden');
+
+            // 顯示/隱藏進度條
+            if (['flashcard', 'quiz', 'typing', 'listening'].includes(mode)) {
+                document.getElementById('session-progress').classList.remove('hidden');
+            } else {
+                document.getElementById('session-progress').classList.add('hidden');
+            }
+
+            updateTopics();
+            loadContent();
+        }
+
+        function updateTopics() {
+            const container = document.getElementById('topic-list');
+            const topics = TOPICS[APP_STATE.currentMode] || [];
+            
+            container.innerHTML = topics.map((t, i) => `
+                <button onclick="selectTopic('${t.value}')" 
+                    data-value="${t.value}"
+                    class="topic-btn w-full text-left px-3 py-2.5 rounded-xl text-sm ${i === 0 ? 'bg-white/10 text-white' : 'text-gray-400 hover:bg-white/5'} transition">
+                    ${t.label}
+                </button>
+            `).join('');
+
+            // 設定第一個主題為預設
+            if (topics.length > 0) {
+                APP_STATE.currentTopic = topics[0].value;
+            }
+        }
+
+        function selectTopic(topicValue) {
+            APP_STATE.currentTopic = topicValue;
+            APP_STATE.historyData = [];
+            
+            // 更新桌面版和手機版的主題按鈕狀態
+            document.querySelectorAll('.topic-btn, .mobile-topic-btn').forEach(btn => {
+                btn.classList.remove('bg-white/10', 'text-white');
+                btn.classList.add('text-gray-400');
+                if (btn.dataset.value === topicValue) {
+                    btn.classList.add('bg-white/10', 'text-white');
+                    btn.classList.remove('text-gray-400');
+                }
+            });
+
+            loadContent();
+        }
+
+        // ===== Gemini API 直接呼叫 (不需要 server.js) =====
+        const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+
+        // CEFR 等級描述
+        const LEVEL_DESCRIPTIONS = {
+            'A1': '非常基礎的日常詞彙，適合初學者（約500個最常用單字）',
+            'A2': '簡單日常情境的初級詞彙（約1000-1500個常用單字）',
+            'B1': '熟悉話題和簡單觀點的中級詞彙（約2500個單字）',
+            'B2': '複雜話題和抽象概念的中高級詞彙（約4000個單字）',
+            'C1': '進階詞彙，包含慣用語和細微語意差異（約8000個單字）'
+        };
+
+        // 生成 Prompt
+        function generatePrompt(type, topic, level, exclude, userMessage) {
+            const excludeText = (exclude && exclude.length > 0) ? exclude.join(", ") : "None";
+            const levelDesc = LEVEL_DESCRIPTIONS[level] || LEVEL_DESCRIPTIONS['B1'];
+
+            switch (type) {
+                case 'vocab':
+                    return `You are an expert English vocabulary teacher creating content for a language learning app.
+
+**Context:**
+- Topic: "${topic}"
+- CEFR Level: ${level} (${levelDesc})
+- Already learned words to EXCLUDE: [${excludeText}]
+
+**Task:** Generate exactly 5 NEW vocabulary words that:
+1. Are relevant to the topic "${topic}"
+2. Match the ${level} difficulty level appropriately
+3. Are practical and commonly used
+4. Are NOT in the exclude list
+
+**Output Format (JSON only, no markdown):**
+{
+    "title": "Topic title in English",
+    "words": [
+        {
+            "word": "English word",
+            "pos": "noun/verb/adj/adv/phrase",
+            "mean": "繁體中文解釋（簡潔明確）",
+            "example": "A natural example sentence using the word",
+            "trans": "例句的繁體中文翻譯"
+        }
+    ]
+}`;
+
+                case 'grammar':
+                    return `You are an expert English grammar teacher creating interactive quiz content.
+
+**Context:**
+- Grammar Topic: "${topic}"
+- CEFR Level: ${level} (${levelDesc})
+- Previously used content to avoid: [${excludeText}]
+
+**Task:** Create a grammar lesson with 3 quiz questions.
+
+**Output Format (JSON only, no markdown):**
+{
+    "concept": "Grammar concept name in English",
+    "explanation": "清晰的繁體中文文法解釋，包含使用時機和注意事項",
+    "example_sentences": ["Example 1", "Example 2"],
+    "quiz": [
+        {
+            "question": "Fill in the blank: She ___ to school yesterday.",
+            "options": ["go", "goes", "went", "going"],
+            "answer": 2,
+            "reason": "繁體中文解釋為什麼這個選項正確"
+        }
+    ]
+}`;
+
+                case 'chat':
+                    return `You are an AI English conversation partner in a language learning app.
+
+**Scenario:** ${topic}
+**User's Level:** ${level} (${levelDesc})
+**User said:** "${userMessage}"
+
+**Your Task:**
+1. Respond naturally as the other person in this ${topic} scenario
+2. Keep your English appropriate for ${level} level
+3. Provide helpful feedback on the user's English
+4. Give a score (0-100) based on grammar, vocabulary, and naturalness
+
+**Output Format (JSON only, no markdown):**
+{
+    "reply": "Your natural English response (2-3 sentences)",
+    "chinese": "回覆的繁體中文翻譯",
+    "score": 85,
+    "feedback": "對用戶英文的具體建議（用繁體中文）"
+}`;
+
+                default:
+                    return `Generate a simple greeting in JSON format: {"message": "Hello!"}`;
+            }
+        }
+
+        // 呼叫 Gemini API
+        async function callGeminiAPI(prompt) {
+            const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+                    method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 2048
+                    }
+                    })
+                });
+                
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error?.message || 'API 呼叫失敗');
+            }
+
+            const result = await response.json();
+            const text = result.candidates[0].content.parts[0].text;
+            
+            // 清理 JSON（移除 markdown 標記）
+            let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            const firstBrace = cleanText.indexOf('{');
+            const lastBrace = cleanText.lastIndexOf('}');
+            if (firstBrace !== -1 && lastBrace !== -1) {
+                cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+            }
+            
+            return JSON.parse(cleanText);
+        }
+
+        // ===== 內容載入 =====
+        async function loadContent() {
+            if (APP_STATE.currentMode === 'chat') {
+                initChat();
+                return;
+            }
+
+            document.getElementById('loading').classList.remove('hidden');
+
+            try {
+                const type = ['flashcard', 'quiz', 'typing', 'listening'].includes(APP_STATE.currentMode) 
+                    ? 'vocab' 
+                    : APP_STATE.currentMode;
+                
+                const prompt = generatePrompt(
+                    type,
+                    APP_STATE.currentTopic,
+                    document.getElementById('level-select').value,
+                    APP_STATE.historyData
+                );
+
+                const data = await callGeminiAPI(prompt);
+                
+                if (data.words) {
+                    APP_STATE.words = data.words;
+                    APP_STATE.words.forEach(w => APP_STATE.historyData.push(w.word));
+                    APP_STATE.currentIndex = 0;
+                    renderCurrentMode();
+                } else if (data.concept) {
+                    renderGrammar(data);
+                }
+
+            } catch (e) {
+                console.error(e);
+                alert('載入失敗：' + e.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+
+        function renderCurrentMode() {
+            updateProgress();
+            
+            switch (APP_STATE.currentMode) {
+                case 'flashcard':
+                    renderFlashcard();
+                    break;
+                case 'quiz':
+                    renderQuiz();
+                    break;
+                case 'typing':
+                    renderTyping();
+                    break;
+                case 'listening':
+                    renderListening();
+                    break;
+            }
+        }
+
+        function updateProgress() {
+            const total = APP_STATE.words.length;
+            const current = APP_STATE.currentIndex + 1;
+            document.getElementById('current-idx').textContent = current;
+            document.getElementById('total-items').textContent = total;
+            document.getElementById('session-bar').style.width = (current / total * 100) + '%';
+        }
+
+        // ===== 閃卡模式 =====
+        function renderFlashcard() {
+            const word = APP_STATE.words[APP_STATE.currentIndex];
+            if (!word) return;
+
+            // 重置翻轉狀態
+            document.querySelector('.flashcard').classList.remove('flipped');
+            APP_STATE.isFlipped = false;
+
+            document.getElementById('card-word').textContent = word.word;
+            document.getElementById('card-pos').textContent = word.pos;
+            document.getElementById('card-mean').textContent = word.mean;
+            document.getElementById('card-example').textContent = `"${word.example}"`;
+            document.getElementById('card-trans').textContent = word.trans || '';
+        }
+
+        function flipCard() {
+            const card = document.querySelector('.flashcard');
+            card.classList.toggle('flipped');
+            APP_STATE.isFlipped = !APP_STATE.isFlipped;
+        }
+
+        function rateCard(rating) {
+            let xp = 0;
+            switch (rating) {
+                case 'hard': xp = 5; break;
+                case 'good': xp = 10; break;
+                case 'easy': xp = 15; break;
+            }
+            
+            addXP(xp);
+            
+            // 記錄學過的單字
+            const word = APP_STATE.words[APP_STATE.currentIndex];
+            if (word && !userData.wordsLearned.includes(word.word)) {
+                userData.wordsLearned.push(word.word);
+                saveUserData();
+            }
+
+            nextWord();
+        }
+
+        // ===== 選擇題模式 =====
+        function renderQuiz() {
+            const word = APP_STATE.words[APP_STATE.currentIndex];
+            if (!word) return;
+
+            APP_STATE.isAnswered = false;
+            document.getElementById('quiz-word').textContent = word.word;
+            document.getElementById('quiz-feedback').classList.add('hidden');
+
+            // 生成選項 (1個正確 + 3個錯誤)
+            const options = [word.mean];
+            const otherWords = APP_STATE.words.filter((w, i) => i !== APP_STATE.currentIndex);
+            while (options.length < 4 && otherWords.length > 0) {
+                const idx = Math.floor(Math.random() * otherWords.length);
+                if (!options.includes(otherWords[idx].mean)) {
+                    options.push(otherWords[idx].mean);
+                }
+                otherWords.splice(idx, 1);
+            }
+
+            // 補足選項
+            const fillers = ['蘋果', '書本', '電腦', '音樂', '城市'];
+            while (options.length < 4) {
+                options.push(fillers[options.length]);
+            }
+
+            // 打亂順序
+            options.sort(() => Math.random() - 0.5);
+
+            document.getElementById('quiz-options').innerHTML = options.map((opt, i) => `
+                <button onclick="checkQuizAnswer(this, '${opt}', '${word.mean}')" 
+                    class="btn-option w-full py-4 rounded-xl text-left px-6 text-lg font-semibold">
+                    ${opt}
+                </button>
+                `).join('');
+        }
+
+        function checkQuizAnswer(btn, selected, correct) {
+            if (APP_STATE.isAnswered) return;
+            APP_STATE.isAnswered = true;
+
+            const isCorrect = selected === correct;
+            userData.totalAnswered++;
+            if (isCorrect) userData.totalCorrect++;
+            saveUserData();
+
+            if (isCorrect) {
+                btn.classList.add('correct');
+                playSound('correct');
+                addXP(10);
+                showFeedback('quiz-feedback', true, '答對了！', '');
+            } else {
+                btn.classList.add('wrong');
+                playSound('wrong');
+                showFeedback('quiz-feedback', false, '再想想...', `正確答案：${correct}`);
+                
+                // 顯示正確答案
+                document.querySelectorAll('#quiz-options button').forEach(b => {
+                    if (b.textContent.trim() === correct) {
+                        b.classList.add('correct');
+                    }
+                });
+            }
+
+            setTimeout(nextWord, 1500);
+        }
+
+        // ===== 拼寫模式 =====
+        function renderTyping() {
+            const word = APP_STATE.words[APP_STATE.currentIndex];
+            if (!word) return;
+
+            APP_STATE.isAnswered = false;
+            document.getElementById('typing-hint').textContent = word.mean;
+            document.getElementById('typing-pos').textContent = word.pos;
+            document.getElementById('typing-input').value = '';
+            document.getElementById('typing-feedback').classList.add('hidden');
+            document.getElementById('typing-input').focus();
+        }
+
+        function checkTyping() {
+            if (APP_STATE.isAnswered) return;
+            
+            const word = APP_STATE.words[APP_STATE.currentIndex];
+            const input = document.getElementById('typing-input').value.trim().toLowerCase();
+            const correct = word.word.toLowerCase();
+
+            APP_STATE.isAnswered = true;
+            userData.totalAnswered++;
+
+            if (input === correct) {
+                userData.totalCorrect++;
+                saveUserData();
+                playSound('correct');
+                addXP(15);
+                showFeedback('typing-feedback', true, '完美！', '');
+                confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+            } else {
+                saveUserData();
+                playSound('wrong');
+                showFeedback('typing-feedback', false, '差一點！', `正確答案：${word.word}`);
+            }
+
+            setTimeout(nextWord, 1500);
+        }
+
+        // ===== 聽力模式 =====
+        function renderListening() {
+            const word = APP_STATE.words[APP_STATE.currentIndex];
+            if (!word) return;
+
+            APP_STATE.isAnswered = false;
+            document.getElementById('listening-feedback').classList.add('hidden');
+
+            // 生成選項
+            const options = [word.word];
+            const otherWords = APP_STATE.words.filter((w, i) => i !== APP_STATE.currentIndex);
+            while (options.length < 4 && otherWords.length > 0) {
+                const idx = Math.floor(Math.random() * otherWords.length);
+                if (!options.includes(otherWords[idx].word)) {
+                    options.push(otherWords[idx].word);
+                }
+                otherWords.splice(idx, 1);
+            }
+            options.sort(() => Math.random() - 0.5);
+
+            document.getElementById('listening-options').innerHTML = options.map(opt => `
+                <button onclick="checkListeningAnswer(this, '${opt}', '${word.word}')" 
+                    class="btn-option py-6 rounded-xl text-lg font-bold">
+                    ${opt}
+                </button>
+            `).join('');
+
+            // 自動播放
+            setTimeout(playListeningWord, 500);
+        }
+
+        function playListeningWord() {
+            const word = APP_STATE.words[APP_STATE.currentIndex];
+            if (!word) return;
+            
+            // 聽力模式用較慢速度，更清晰
+            speakText(word.word, 0.65);
+            
+            document.getElementById('sound-waves').classList.remove('hidden');
+            setTimeout(() => document.getElementById('sound-waves').classList.add('hidden'), 2000);
+        }
+
+        // 聽力模式重新播放（慢速）
+        function replayListeningSlow() {
+            const word = APP_STATE.words[APP_STATE.currentIndex];
+            if (word) speakText(word.word, 0.45);
+        }
+
+        function checkListeningAnswer(btn, selected, correct) {
+            if (APP_STATE.isAnswered) return;
+            APP_STATE.isAnswered = true;
+
+            userData.totalAnswered++;
+            const isCorrect = selected === correct;
+            if (isCorrect) userData.totalCorrect++;
+            saveUserData();
+
+            if (isCorrect) {
+                btn.classList.add('correct');
+                playSound('correct');
+                addXP(10);
+                showFeedback('listening-feedback', true, '聽力很棒！', '');
+            } else {
+                btn.classList.add('wrong');
+                playSound('wrong');
+                showFeedback('listening-feedback', false, '再聽一次', `正確答案：${correct}`);
+            }
+
+            setTimeout(nextWord, 1500);
+        }
+
+        // ===== 文法模式 =====
+        function renderGrammar(data) {
+            document.getElementById('grammar-concept').textContent = data.concept;
+            document.getElementById('grammar-explanation').textContent = data.explanation;
+
+            document.getElementById('grammar-quiz').innerHTML = data.quiz.map((q, idx) => `
+                <div class="bg-white/5 rounded-xl p-4">
+                    <p class="font-bold mb-3">${q.question}</p>
+                    <div class="space-y-2">
+                                        ${q.options.map((opt, i) => `
+                            <button onclick="checkGrammarAnswer(this, ${i}, ${q.answer}, '${q.reason}')"
+                                class="btn-option w-full py-3 px-4 rounded-lg text-left text-sm">
+                                                ${opt}
+                                            </button>
+                                        `).join('')}
+                                    </div>
+                    <div class="grammar-feedback hidden mt-3 p-3 rounded-lg text-sm"></div>
+                                </div>
+            `).join('');
+        }
+
+        function checkGrammarAnswer(btn, selected, correct, reason) {
+            const container = btn.closest('.space-y-2');
+            const feedback = btn.closest('.bg-white\\/5').querySelector('.grammar-feedback');
+            
+            if (selected === correct) {
+                btn.classList.add('correct');
+                playSound('correct');
+                addXP(10);
+                feedback.innerHTML = `<span class="text-green-400">✓ ${reason}</span>`;
+            } else {
+                btn.classList.add('wrong');
+                playSound('wrong');
+                feedback.innerHTML = `<span class="text-red-400">✗ ${reason}</span>`;
+            }
+            feedback.classList.remove('hidden');
+
+            // 禁用所有選項
+            container.querySelectorAll('button').forEach(b => b.disabled = true);
+        }
+
+        // ===== AI 對話模式 =====
+        // 取得主題的中文標籤
+        function getTopicLabel(value) {
+            const topics = TOPICS[APP_STATE.currentMode] || [];
+            const topic = topics.find(t => t.value === value);
+            return topic ? topic.label : value;
+        }
+
+        // 情境對話的中文歡迎語
+        const CHAT_GREETINGS = {
+            'Coffee Shop': { greeting: 'Hello! Welcome to our café. What can I get for you today?', chinese: '你好！歡迎來到我們的咖啡廳。今天想喝點什麼？' },
+            'Job Interview': { greeting: "Good morning! Thank you for coming in today. Please have a seat. Let's start with you telling me a bit about yourself.", chinese: '早安！感謝您今天前來。請坐。讓我們從您的自我介紹開始吧。' },
+            'Airport': { greeting: 'Good day! May I see your passport and boarding pass, please?', chinese: '您好！請出示您的護照和登機證。' },
+            'Hotel Check-in': { greeting: 'Welcome to our hotel! Do you have a reservation with us?', chinese: '歡迎光臨！請問您有預訂嗎？' },
+            'Restaurant': { greeting: 'Good evening! Welcome to our restaurant. Table for how many?', chinese: '晚安！歡迎光臨。請問幾位？' },
+            'Doctor Visit': { greeting: "Hello, I'm Dr. Smith. What brings you in today? How are you feeling?", chinese: '您好，我是史密斯醫生。今天是什麼問題呢？您現在感覺如何？' }
+        };
+
+        function initChat() {
+            const scenarioValue = APP_STATE.currentTopic;
+            const scenarioLabel = getTopicLabel(scenarioValue);
+            const chatInfo = CHAT_GREETINGS[scenarioValue] || { 
+                greeting: `Hi! Welcome to our ${scenarioValue} scenario. Let's practice some English conversation.`,
+                chinese: `嗨！歡迎來到${scenarioLabel}情境。讓我們練習英語對話。`
+            };
+
+            document.getElementById('chat-scenario').textContent = scenarioLabel;
+            document.getElementById('chat-messages').innerHTML = `
+                <div class="flex gap-3">
+                    <div class="w-12 h-12 bg-gradient-to-br from-rose-500 to-purple-500 rounded-full flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-robot text-lg"></i>
+                    </div>
+                    <div class="glass-card rounded-2xl rounded-tl-sm p-4 max-w-[80%]">
+                        <p class="text-lg">${chatInfo.greeting}</p>
+                        <p class="text-sm text-gray-400 mt-2 border-t border-white/10 pt-2">${chatInfo.chinese}</p>
+                        <p class="text-xs text-blue-400 mt-2"><i class="fa-solid fa-lightbulb mr-1"></i>提示：用英文回覆，練習對話！</p>
+                        </div>
+                    </div>
+                `;
+        }
+
+        async function sendChat() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const messagesContainer = document.getElementById('chat-messages');
+
+            // 顯示用戶訊息
+            messagesContainer.innerHTML += `
+                <div class="flex gap-3 justify-end">
+                    <div class="bg-blue-500/20 border border-blue-500/30 rounded-2xl rounded-tr-sm p-4 max-w-[80%]">
+                        <p>${message}</p>
+                        </div>
+                                </div>
+            `;
+
+            input.value = '';
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            // 顯示載入
+            const loadingId = 'typing-' + Date.now();
+            messagesContainer.innerHTML += `
+                <div id="${loadingId}" class="flex gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-rose-500 to-purple-500 rounded-full flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <div class="glass-card rounded-2xl rounded-tl-sm p-4">
+                        <div class="flex gap-1">
+                            <span class="w-2 h-2 bg-white/50 rounded-full animate-bounce"></span>
+                            <span class="w-2 h-2 bg-white/50 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
+                            <span class="w-2 h-2 bg-white/50 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+                        </div>
+                        </div>
+                    </div>
+                `;
+
+            try {
+                const prompt = generatePrompt(
+                    'chat',
+                    APP_STATE.currentTopic,
+                    document.getElementById('level-select').value,
+                    [],
+                    message
+                );
+
+                const data = await callGeminiAPI(prompt);
+                document.getElementById(loadingId).remove();
+
+                // AI 回覆
+                messagesContainer.innerHTML += `
+                    <div class="flex gap-3 animate-slide">
+                        <div class="w-10 h-10 bg-gradient-to-br from-rose-500 to-purple-500 rounded-full flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+                        <div class="glass-card rounded-2xl rounded-tl-sm p-4 max-w-[80%]">
+                            <p>${data.reply}</p>
+                            <p class="text-xs text-gray-500 mt-2">${data.chinese}</p>
+                            ${data.feedback ? `<p class="text-xs text-yellow-400 mt-2 border-t border-white/10 pt-2">💡 ${data.feedback}</p>` : ''}
+                            ${data.score ? `<div class="mt-2 flex items-center gap-2">
+                                <span class="text-xs text-gray-400">表達評分</span>
+                                <div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                                    <div class="h-full ${data.score >= 80 ? 'bg-green-500' : data.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'}" style="width: ${data.score}%"></div>
+                                </div>
+                                <span class="text-xs font-bold">${data.score}</span>
+                            </div>` : ''}
+                        </div>
+                    </div>
+                `;
+
+                addXP(5);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            } catch (e) {
+                document.getElementById(loadingId).remove();
+                console.error(e);
+                alert('對話失敗：' + e.message);
+            }
+        }
+
+        // ===== 工具函數 =====
+        function nextWord() {
+            APP_STATE.currentIndex++;
+            
+            if (APP_STATE.currentIndex >= APP_STATE.words.length) {
+                showCompletion();
+            } else {
+                renderCurrentMode();
+            }
+        }
+
+        function showCompletion() {
+            const earnedXP = APP_STATE.words.length * 10;
+            document.getElementById('earned-xp').textContent = earnedXP;
+            document.getElementById('complete-modal').classList.remove('hidden');
+            
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        }
+
+        function continuelearning() {
+            document.getElementById('complete-modal').classList.add('hidden');
+            APP_STATE.currentIndex = 0;
+            loadContent();
+        }
+
+        function showFeedback(elementId, isCorrect, title, subtitle) {
+            const el = document.getElementById(elementId);
+            el.classList.remove('hidden');
+            el.className = `mt-6 p-4 rounded-xl text-center ${isCorrect ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`;
+            el.innerHTML = `<div class="font-bold">${title}</div>${subtitle ? `<div class="text-sm opacity-80">${subtitle}</div>` : ''}`;
+        }
+
+        // ===== 語音播放功能（改善清晰度）=====
+        let englishVoice = null;
+        let voicesLoaded = false;
+
+        // 初始化並選擇最佳英文語音
+        function initVoices() {
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length === 0) return;
+            
+            voicesLoaded = true;
+            
+            // 優先選擇順序：Google > Microsoft > Apple > 其他
+            const preferredVoices = [
+                'Google US English',
+                'Google UK English Female',
+                'Google UK English Male',
+                'Microsoft Zira',
+                'Microsoft David',
+                'Samantha',           // macOS/iOS
+                'Alex',               // macOS
+                'Karen',              // Australian
+                'Daniel',             // British
+            ];
+            
+            // 嘗試找到最佳語音
+            for (const preferred of preferredVoices) {
+                const found = voices.find(v => v.name.includes(preferred));
+                if (found) {
+                    englishVoice = found;
+                    console.log('選擇語音:', found.name);
+                    break;
+                }
+            }
+            
+            // 如果沒找到優先語音，選擇任何英文語音
+            if (!englishVoice) {
+                englishVoice = voices.find(v => v.lang.startsWith('en-')) || voices[0];
+                console.log('使用預設語音:', englishVoice?.name);
+            }
+        }
+
+        // 監聽語音列表載入
+        if (window.speechSynthesis) {
+            window.speechSynthesis.onvoiceschanged = initVoices;
+            initVoices(); // 立即嘗試一次
+        }
+
+        function speakWord() {
+            const word = APP_STATE.words[APP_STATE.currentIndex];
+            if (word) {
+                // 先慢速播放一次，再正常速度播放
+                speakText(word.word, 0.6, () => {
+                    setTimeout(() => speakText(word.word, 0.85), 800);
+                });
+            }
+        }
+
+        function speakText(text, rate = 0.75, onEnd = null) {
+            window.speechSynthesis.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // 使用最佳語音
+            if (englishVoice) {
+                utterance.voice = englishVoice;
+            }
+            
+            utterance.lang = 'en-US';
+            utterance.rate = rate;      // 語速（0.1-10，預設1）
+            utterance.pitch = 1.0;      // 音調（0-2，預設1）
+            utterance.volume = 1.0;     // 音量（0-1）
+            
+            if (onEnd) {
+                utterance.onend = onEnd;
+            }
+            
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // 慢速播放（給用戶手動點擊用）
+        function speakSlow() {
+            const word = APP_STATE.words[APP_STATE.currentIndex];
+            if (word) speakText(word.word, 0.5);
+        }
+
+        // 正常速度播放
+        function speakNormal() {
+            const word = APP_STATE.words[APP_STATE.currentIndex];
+            if (word) speakText(word.word, 0.85);
+        }
+
+        function playSound(type) {
+            try {
+                const sound = document.getElementById(`sound-${type}`);
+                sound.currentTime = 0;
+                sound.volume = 0.3;
+                sound.play().catch(() => {});
+            } catch (e) {}
+        }
+
+        // ===== 統計 =====
+        function openStats() {
+            document.getElementById('stat-streak').textContent = userData.streak;
+            document.getElementById('stat-xp').textContent = userData.xp;
+            document.getElementById('stat-words').textContent = userData.wordsLearned?.length || 0;
+            const accuracy = userData.totalAnswered > 0 
+                ? Math.round(userData.totalCorrect / userData.totalAnswered * 100) 
+                : 0;
+            document.getElementById('stat-accuracy').textContent = accuracy + '%';
+            document.getElementById('stats-modal').classList.remove('hidden');
+        }
+
+        function closeStats() {
+            document.getElementById('stats-modal').classList.add('hidden');
+        }
+
+        // ===== 手機選單 =====
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+            
+            // 同步更新手機版主題列表
+            if (!menu.classList.contains('hidden')) {
+                updateMobileTopics();
+            }
+        }
+
+        function updateMobileTopics() {
+            const container = document.getElementById('mobile-topic-list');
+            const topics = TOPICS[APP_STATE.currentMode] || [];
+            
+            container.innerHTML = topics.map((t, i) => `
+                <button onclick="selectTopic('${t.value}'); toggleMobileMenu();" 
+                    data-value="${t.value}"
+                    class="mobile-topic-btn w-full text-left px-3 py-2.5 rounded-xl text-sm ${t.value === APP_STATE.currentTopic ? 'bg-white/10 text-white' : 'text-gray-400 hover:bg-white/5'} transition">
+                    ${t.label}
+                </button>
+            `).join('');
+        }
+
+        // ===== 語音輸入功能 =====
+        let recognition = null;
+        let isListening = false;
+
+        function initSpeechRecognition() {
+            // 檢查瀏覽器是否支援語音辨識
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                console.log('此瀏覽器不支援語音辨識');
+                // 隱藏麥克風按鈕
+                document.querySelectorAll('[id$="-mic-btn"]').forEach(btn => {
+                    btn.style.display = 'none';
+                });
+                return false;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';  // 辨識英文
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = function() {
+                isListening = true;
+                updateMicButtonState(true);
+            };
+
+            recognition.onend = function() {
+                isListening = false;
+                updateMicButtonState(false);
+            };
+
+            recognition.onerror = function(event) {
+                console.error('語音辨識錯誤:', event.error);
+                isListening = false;
+                updateMicButtonState(false);
+                
+                if (event.error === 'no-speech') {
+                    showVoiceError('沒有偵測到聲音，請再試一次');
+                } else if (event.error === 'not-allowed') {
+                    showVoiceError('請允許使用麥克風權限');
+                }
+            };
+
+            return true;
+        }
+
+        function startVoiceInput(targetInputId) {
+            if (!recognition) {
+                if (!initSpeechRecognition()) {
+                    alert('您的瀏覽器不支援語音輸入功能，請使用 Chrome 或 Edge 瀏覽器');
+                    return;
+                }
+            }
+
+            if (isListening) {
+                recognition.stop();
+                return;
+            }
+
+            const targetInput = document.getElementById(targetInputId);
+            
+            // 顯示聆聽狀態
+            if (targetInputId === 'chat-input') {
+                document.getElementById('chat-voice-status').classList.remove('hidden');
+            } else {
+                document.getElementById('voice-status').classList.remove('hidden');
+            }
+
+            recognition.onresult = function(event) {
+                let finalTranscript = '';
+                let interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                // 即時顯示辨識結果
+                if (interimTranscript) {
+                    targetInput.value = interimTranscript;
+                    targetInput.style.color = '#94a3b8'; // 暫時結果用灰色
+                }
+
+                if (finalTranscript) {
+                    targetInput.value = finalTranscript;
+                    targetInput.style.color = 'white';
+                    
+                    // 隱藏聆聽狀態
+                    document.getElementById('chat-voice-status')?.classList.add('hidden');
+                    document.getElementById('voice-status')?.classList.add('hidden');
+
+                    // 播放成功音效
+                    playSound('correct');
+                }
+            };
+
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error('無法啟動語音辨識:', e);
+            }
+        }
+
+        function updateMicButtonState(listening) {
+            const micBtns = document.querySelectorAll('[id$="-mic-btn"]');
+            micBtns.forEach(btn => {
+                if (listening) {
+                    btn.classList.add('animate-pulse', 'ring-4', 'ring-red-500/50');
+                    btn.innerHTML = '<i class="fa-solid fa-stop text-xl"></i>';
+                } else {
+                    btn.classList.remove('animate-pulse', 'ring-4', 'ring-red-500/50');
+                    btn.innerHTML = '<i class="fa-solid fa-microphone text-xl"></i>';
+                    
+                    // 隱藏所有聆聽狀態
+                    document.getElementById('chat-voice-status')?.classList.add('hidden');
+                    document.getElementById('voice-status')?.classList.add('hidden');
+                }
+            });
+        }
+
+        function showVoiceError(message) {
+            // 簡單的錯誤提示
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-20 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-full shadow-lg z-50 animate-slide';
+            toast.innerHTML = `<i class="fa-solid fa-exclamation-circle mr-2"></i>${message}`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // 初始化語音辨識
+        document.addEventListener('DOMContentLoaded', () => {
+            initSpeechRecognition();
+        });
+
+        function resetAllData() {
+            if (confirm('確定要重置所有學習數據嗎？')) {
+                userData = { xp: 0, streak: 0, wordsLearned: [], totalCorrect: 0, totalAnswered: 0, lastActive: null };
+                APP_STATE.historyData = [];
+                saveUserData();
+                closeStats();
+            }
+        }
+    </script>
+</body>
+</html>
