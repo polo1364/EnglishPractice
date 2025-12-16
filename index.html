@@ -288,13 +288,19 @@
                     <!-- 等級選擇 -->
                     <div class="relative">
                         <label class="text-xs text-gray-400 absolute -top-5 left-0">難度等級</label>
-                        <select id="level-select" class="bg-slate-800 border-2 border-slate-600 rounded-xl px-4 py-2.5 text-base font-semibold cursor-pointer hover:border-green-500 transition min-w-[160px]">
+                        <select id="level-select" onchange="onLevelChange()" class="bg-slate-800 border-2 border-slate-600 rounded-xl px-4 py-2.5 text-base font-semibold cursor-pointer hover:border-green-500 transition min-w-[180px]">
                             <option value="A1" selected>🌱 入門 (A1)</option>
                             <option value="A2">🌿 初級 (A2)</option>
                             <option value="B1">🌳 中級 (B1)</option>
                             <option value="B2">🌲 中高級 (B2)</option>
                             <option value="C1">🏔️ 進階 (C1)</option>
-                    </select>
+                            <option value="C2">⛰️ 精通 (C2)</option>
+                            <option value="TOEIC">📘 多益常考</option>
+                            <option value="IELTS">📗 雅思必備</option>
+                            <option value="TOEFL">📙 托福學術</option>
+                            <option value="GRE">🎓 GRE 高級</option>
+                            <option value="BUSINESS">💼 商業英語</option>
+                        </select>
                     </div>
 
                     <!-- 個人資料 -->
@@ -1139,6 +1145,19 @@
             loadContent();
         }
 
+        // 難度等級變更時重新載入內容
+        function onLevelChange() {
+            const level = document.getElementById('level-select').value;
+            console.log('難度切換至:', level);
+            
+            // 清空當前 session 的歷史（但保留持久化的記錄）
+            APP_STATE.historyData = [];
+            APP_STATE.currentIndex = 0;
+            
+            // 重新載入內容
+            loadContent();
+        }
+
         // ===== Gemini API 直接呼叫 (不需要 server.js) =====
         const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
@@ -1148,7 +1167,13 @@
             'A2': '簡單日常情境的初級詞彙（約1000-1500個常用單字）',
             'B1': '熟悉話題和簡單觀點的中級詞彙（約2500個單字）',
             'B2': '複雜話題和抽象概念的中高級詞彙（約4000個單字）',
-            'C1': '進階詞彙，包含慣用語和細微語意差異（約8000個單字）'
+            'C1': '進階詞彙，包含慣用語和細微語意差異（約8000個單字）',
+            'C2': '母語者程度的精通詞彙，包含罕見詞、文學用語和專業術語（10000+單字）',
+            'TOEIC': '多益測驗常考詞彙，商務、職場、日常溝通情境（600-900分程度）',
+            'IELTS': '雅思考試必備詞彙，學術寫作和口說高頻詞（6.0-8.0分程度）',
+            'TOEFL': '托福學術詞彙，大學課堂、學術論文常見用語（80-110分程度）',
+            'GRE': 'GRE 高級學術詞彙，艱深罕見但考試必備的單字',
+            'BUSINESS': '商業英語專業詞彙，會議、簡報、談判、財務用語'
         };
 
         // 隨機指令，增加內容多樣性
@@ -1196,14 +1221,26 @@
             // 常見單字黑名單（避免 AI 總是生成這些）
             const commonWordsToAvoid = 'eat, drink, sleep, walk, run, talk, read, write, play, work, go, come, see, look, make, take, give, get, have, be, do, say, food, water, house, car, book, phone, computer, money, time, day, night, friend, family, school, office';
 
+            // 特殊考試等級的額外指示
+            const examInstructions = {
+                'TOEIC': 'Focus on TOEIC test vocabulary: business meetings, office communication, travel, shopping, dining. Include common TOEIC phrases.',
+                'IELTS': 'Focus on IELTS academic vocabulary: essay writing, speaking test topics, graphs/charts description, formal academic language.',
+                'TOEFL': 'Focus on TOEFL academic vocabulary: university lectures, scientific concepts, campus life, research terminology.',
+                'GRE': 'Focus on GRE high-level vocabulary: sophisticated, rarely-used academic words that appear on GRE verbal section.',
+                'BUSINESS': 'Focus on business English: negotiations, presentations, financial terms, corporate communication, professional emails.',
+                'C2': 'Focus on native-speaker level vocabulary: literary words, rare expressions, nuanced synonyms, sophisticated collocations.'
+            };
+            const extraInstruction = examInstructions[level] || '';
+
             switch (type) {
                 case 'vocab':
                     return `You are an expert English vocabulary teacher. Generate UNIQUE and INTERESTING vocabulary.
 
 **Context:**
 - Topic: "${topic}"
-- CEFR Level: ${level} (${levelDesc})
+- Level: ${level} (${levelDesc})
 - Request ID: ${timestamp} (generate different words each time)
+${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
 
 **IMPORTANT EXCLUSIONS - Do NOT use these words:**
 - Already learned: [${excludeText}]
