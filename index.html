@@ -767,29 +767,36 @@
                             <!-- 輸入區 -->
                             <div class="p-4 border-t border-white/10">
                                 <div class="flex gap-2">
-                                    <!-- 語音輸入按鈕 -->
+                                    <!-- 中文語音輸入按鈕 -->
+                                    <button onclick="startChineseVoiceInput()" id="chat-mic-zh-btn"
+                                        class="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center hover:scale-110 transition shrink-0"
+                                        title="用中文說，AI教你英文怎麼講">
+                                        <span class="text-sm font-bold">中</span>
+                                    </button>
+                                    <!-- 英文語音輸入按鈕 -->
                                     <button onclick="startVoiceInput('chat-input')" id="chat-mic-btn"
-                                        class="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center hover:scale-110 transition shrink-0"
-                                        title="點擊說英文">
-                                        <i class="fa-solid fa-microphone text-lg"></i>
+                                        class="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center hover:scale-110 transition shrink-0"
+                                        title="用英文說，練習對話">
+                                        <span class="text-sm font-bold">EN</span>
                                     </button>
                                     <input type="text" id="chat-input" 
                                         class="flex-1 bg-white/10 border border-white/20 rounded-full px-5 py-3 focus:border-rose-500 focus:outline-none transition text-base"
-                                        placeholder="說英文或打字..."
+                                        placeholder="用英文對話，或輸入中文讓 AI 教你..."
                                         onkeypress="if(event.key==='Enter') sendChat()">
                                     <button onclick="sendChat()" class="w-12 h-12 bg-gradient-to-r from-rose-500 to-purple-500 rounded-full flex items-center justify-center hover:opacity-90 hover:scale-105 transition shrink-0" title="發送">
                                         <i class="fa-solid fa-paper-plane"></i>
                                     </button>
                                 </div>
                                 <p class="text-xs text-gray-500 mt-2 text-center">
-                                    <i class="fa-solid fa-microphone text-red-400 mr-1"></i>點麥克風用說的 · 
-                                    <i class="fa-solid fa-keyboard text-blue-400 mr-1"></i>或直接打字
+                                    <span class="text-amber-400 font-bold">中</span> 說中文讓AI教你 · 
+                                    <span class="text-blue-400 font-bold">EN</span> 說英文練對話 · 
+                                    <i class="fa-solid fa-keyboard text-gray-400 mr-1"></i>或直接打字
                                 </p>
                                 <!-- 語音辨識狀態 -->
                                 <div id="chat-voice-status" class="hidden mt-2 text-center">
-                                    <div class="inline-flex items-center gap-2 bg-red-500/20 text-red-400 px-4 py-2 rounded-full text-sm">
-                                        <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-                                        <span>正在聆聽您說的英文...</span>
+                                    <div class="inline-flex items-center gap-2 bg-blue-500/20 text-blue-400 px-4 py-2 rounded-full text-sm">
+                                        <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                                        <span id="voice-status-text">正在聆聽...</span>
                                     </div>
                                 </div>
                             </div>
@@ -1362,25 +1369,73 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
 }`;
 
                 case 'chat':
-                    return `You are an AI English conversation partner in a language learning app.
+                    // 檢測是否為中文輸入
+                    const isChinese = /[\u4e00-\u9fff]/.test(userMessage);
+                    
+                    if (isChinese) {
+                        // 中文輸入模式 - 教用戶怎麼說英文
+                        return `You are a friendly English tutor helping a student learn to express themselves in English.
+
+**Scenario:** ${topic}
+**User's Level:** ${level} (${levelDesc})
+**User said in Chinese:** "${userMessage}"
+
+**Your Task:**
+1. First, understand what the user wants to say in Chinese
+2. Teach them how to say it naturally in English (provide 2-3 different ways if possible)
+3. Give a sample conversation response as if you're the other person in the scenario
+4. Provide pronunciation tips or common mistakes to avoid
+
+**Output Format (JSON only, no markdown):**
+{
+    "reply": "Great question! Here's how you can say that in English...",
+    "chinese": "你的回覆的繁體中文翻譯",
+    "teaching": {
+        "userWanted": "用戶想表達的意思",
+        "expressions": [
+            {"english": "First way to say it", "explanation": "解釋這個說法的語境"},
+            {"english": "Second way (more casual)", "explanation": "解釋"},
+            {"english": "Third way (more formal)", "explanation": "解釋"}
+        ],
+        "sampleDialogue": "A: (用戶可以說的話)\\nB: (對方可能的回應)",
+        "tips": "發音提示或常見錯誤"
+    },
+    "score": null,
+    "feedback": "鼓勵用戶的話，並建議他們試著用英文說說看"
+}`;
+                    } else {
+                        // 英文輸入模式 - 自由對話並評分
+                        return `You are a friendly and encouraging English conversation partner. Have a natural, flowing conversation while helping the user improve.
 
 **Scenario:** ${topic}
 **User's Level:** ${level} (${levelDesc})
 **User said:** "${userMessage}"
 
 **Your Task:**
-1. Respond naturally as the other person in this ${topic} scenario
-2. Keep your English appropriate for ${level} level
-3. Provide helpful feedback on the user's English
-4. Give a score (0-100) based on grammar, vocabulary, and naturalness
+1. Respond naturally and conversationally (like a real person, not a textbook)
+2. Keep the conversation going - ask follow-up questions or share related thoughts
+3. Match your vocabulary and complexity to ${level} level
+4. Analyze their English carefully and give specific feedback
+
+**Scoring Guidelines (be honest and specific):**
+- 90-100: Native-like, no errors, natural expressions
+- 80-89: Very good, minor issues only
+- 70-79: Good, some grammar/vocabulary issues but understandable
+- 60-69: OK, noticeable errors but message is clear
+- 50-59: Needs work, several errors affecting clarity
+- Below 50: Major issues, hard to understand
 
 **Output Format (JSON only, no markdown):**
 {
-    "reply": "Your natural English response (2-3 sentences)",
+    "reply": "Your natural, conversational response (2-4 sentences). Keep it flowing!",
     "chinese": "回覆的繁體中文翻譯",
-    "score": 85,
-    "feedback": "對用戶英文的具體建議（用繁體中文）"
-}`;
+    "score": [根據上述標準給出真實分數],
+    "feedback": "具體指出：1) 做得好的地方 2) 可以改進的地方 3) 更自然的說法建議（用繁體中文）",
+    "corrections": [
+        {"original": "用戶說錯的部分", "corrected": "正確說法", "reason": "簡短說明"}
+    ]
+}`; 
+                    }
 
                 default:
                     return `Generate a simple greeting in JSON format: {"message": "Hello!"}`;
@@ -1857,42 +1912,129 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
                 const data = await callGeminiAPI(prompt);
                 document.getElementById(loadingId).remove();
 
+                // 檢測用戶是否用中文輸入
+                const isChinese = /[\u4e00-\u9fff]/.test(message);
+                
                 // AI 回覆 - 轉義引號避免 HTML 問題
                 const safeReply = data.reply.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
                 
-                messagesContainer.innerHTML += `
-                    <div class="flex gap-3 animate-slide">
-                        <div class="w-10 h-10 bg-gradient-to-br from-rose-500 to-purple-500 rounded-full flex items-center justify-center shrink-0">
-                            <i class="fa-solid fa-robot"></i>
-                        </div>
-                        <div class="glass-card rounded-2xl rounded-tl-sm p-4 max-w-[80%]">
-                            <div class="flex items-start justify-between gap-2">
-                                <p class="flex-1">${data.reply}</p>
-                                <div class="shrink-0 flex gap-1">
-                                    <button onclick="speakChatMessage(this, 0.6)" data-text="${safeReply}" 
-                                        class="w-8 h-8 bg-amber-500/20 rounded-full flex items-center justify-center text-amber-400 hover:bg-amber-500/30 transition" title="慢速播放">
-                                        <i class="fa-solid fa-volume-low text-xs"></i>
-                                    </button>
-                                    <button onclick="speakChatMessage(this, 0.85)" data-text="${safeReply}" 
-                                        class="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 hover:bg-blue-500/30 transition" title="正常播放">
+                if (isChinese && data.teaching) {
+                    // 中文輸入 - 教學模式
+                    const teaching = data.teaching;
+                    messagesContainer.innerHTML += `
+                        <div class="flex gap-3 animate-slide">
+                            <div class="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-chalkboard-user"></i>
+                            </div>
+                            <div class="glass-card rounded-2xl rounded-tl-sm p-4 max-w-[85%]">
+                                <div class="flex items-start justify-between gap-2 mb-3">
+                                    <p class="flex-1">${data.reply}</p>
+                                    <button onclick="speakChatMessage(this, 0.8)" data-text="${safeReply}" 
+                                        class="shrink-0 w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 hover:bg-blue-500/30 transition" title="播放">
                                         <i class="fa-solid fa-volume-high text-sm"></i>
                                     </button>
                                 </div>
-                            </div>
-                            <p class="text-xs text-gray-500 mt-2">${data.chinese}</p>
-                            ${data.feedback ? `<p class="text-xs text-yellow-400 mt-2 border-t border-white/10 pt-2">💡 ${data.feedback}</p>` : ''}
-                            ${data.score ? `<div class="mt-2 flex items-center gap-2">
-                                <span class="text-xs text-gray-400">表達評分</span>
-                                <div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                                    <div class="h-full ${data.score >= 80 ? 'bg-green-500' : data.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'}" style="width: ${data.score}%"></div>
+                                <p class="text-xs text-gray-500 mb-3">${data.chinese}</p>
+                                
+                                <!-- 教學內容 -->
+                                <div class="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-xl p-3 mb-3">
+                                    <p class="text-xs text-amber-400 mb-2">📚 你想說的是：${teaching.userWanted || ''}</p>
+                                    <p class="text-xs text-gray-400 mb-2">以下是幾種英文表達方式：</p>
+                                    <div class="space-y-2">
+                                        ${(teaching.expressions || []).map((exp, i) => `
+                                            <div class="flex items-start gap-2 bg-white/5 rounded-lg p-2">
+                                                <span class="text-amber-400 font-bold text-xs">${i + 1}.</span>
+                                                <div class="flex-1">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-green-400 font-medium">"${exp.english}"</span>
+                                                        <button onclick="speakChatMessage(this, 0.7)" data-text="${exp.english.replace(/"/g, '&quot;')}" 
+                                                            class="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center text-green-400 hover:bg-green-500/30 transition" title="播放">
+                                                            <i class="fa-solid fa-volume-high text-xs"></i>
+                                                        </button>
+                                                    </div>
+                                                    <p class="text-xs text-gray-400 mt-1">${exp.explanation || ''}</p>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
                                 </div>
-                                <span class="text-xs font-bold">${data.score}</span>
-                            </div>` : ''}
+                                
+                                ${teaching.sampleDialogue ? `
+                                <div class="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 mb-3">
+                                    <p class="text-xs text-blue-400 mb-2">💬 對話範例：</p>
+                                    <pre class="text-sm text-white whitespace-pre-wrap">${teaching.sampleDialogue}</pre>
+                                </div>` : ''}
+                                
+                                ${teaching.tips ? `
+                                <div class="bg-purple-500/10 border border-purple-500/30 rounded-xl p-3">
+                                    <p class="text-xs text-purple-400">💡 小提示：${teaching.tips}</p>
+                                </div>` : ''}
+                                
+                                ${data.feedback ? `<p class="text-xs text-yellow-400 mt-3 pt-2 border-t border-white/10">✨ ${data.feedback}</p>` : ''}
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                } else {
+                    // 英文輸入 - 對話評分模式
+                    messagesContainer.innerHTML += `
+                        <div class="flex gap-3 animate-slide">
+                            <div class="w-10 h-10 bg-gradient-to-br from-rose-500 to-purple-500 rounded-full flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-robot"></i>
+                            </div>
+                            <div class="glass-card rounded-2xl rounded-tl-sm p-4 max-w-[80%]">
+                                <div class="flex items-start justify-between gap-2">
+                                    <p class="flex-1">${data.reply}</p>
+                                    <div class="shrink-0 flex gap-1">
+                                        <button onclick="speakChatMessage(this, 0.6)" data-text="${safeReply}" 
+                                            class="w-8 h-8 bg-amber-500/20 rounded-full flex items-center justify-center text-amber-400 hover:bg-amber-500/30 transition" title="慢速播放">
+                                            <i class="fa-solid fa-volume-low text-xs"></i>
+                                        </button>
+                                        <button onclick="speakChatMessage(this, 0.85)" data-text="${safeReply}" 
+                                            class="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 hover:bg-blue-500/30 transition" title="正常播放">
+                                            <i class="fa-solid fa-volume-high text-sm"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-2">${data.chinese}</p>
+                                
+                                ${data.corrections && data.corrections.length > 0 ? `
+                                <div class="bg-red-500/10 border border-red-500/30 rounded-lg p-2 mt-3">
+                                    <p class="text-xs text-red-400 mb-1">✏️ 修正建議：</p>
+                                    ${data.corrections.map(c => `
+                                        <div class="text-xs mt-1">
+                                            <span class="text-red-400 line-through">${c.original}</span>
+                                            <span class="text-white mx-1">→</span>
+                                            <span class="text-green-400">${c.corrected}</span>
+                                            <span class="text-gray-500 block mt-0.5">${c.reason || ''}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>` : ''}
+                                
+                                ${data.feedback ? `<p class="text-xs text-yellow-400 mt-2 border-t border-white/10 pt-2">💡 ${data.feedback}</p>` : ''}
+                                
+                                ${data.score ? `
+                                <div class="mt-3 pt-2 border-t border-white/10">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs text-gray-400">表達評分</span>
+                                        <div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                                            <div class="h-full transition-all duration-500 ${data.score >= 80 ? 'bg-green-500' : data.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'}" style="width: ${data.score}%"></div>
+                                        </div>
+                                        <span class="text-sm font-bold ${data.score >= 80 ? 'text-green-400' : data.score >= 60 ? 'text-yellow-400' : 'text-red-400'}">${data.score}</span>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        ${data.score >= 90 ? '🌟 太棒了！幾乎像母語者一樣！' : 
+                                          data.score >= 80 ? '👏 很好！只有一些小地方可以改進。' :
+                                          data.score >= 70 ? '👍 不錯！繼續練習會更好。' :
+                                          data.score >= 60 ? '💪 還可以，注意一下文法和用字。' :
+                                          '📚 加油！多練習幾次會進步的！'}
+                                    </p>
+                                </div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
 
-                addXP(5);
+                addXP(isChinese ? 3 : 5);
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
             } catch (e) {
@@ -2238,7 +2380,11 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
             
             // 顯示聆聽狀態
             if (targetInputId === 'chat-input') {
-                document.getElementById('chat-voice-status').classList.remove('hidden');
+                const statusDiv = document.getElementById('chat-voice-status');
+                const statusText = document.getElementById('voice-status-text');
+                statusDiv.classList.remove('hidden');
+                statusText.textContent = '正在聆聽您說的英文...';
+                statusDiv.querySelector('div').className = 'inline-flex items-center gap-2 bg-blue-500/20 text-blue-400 px-4 py-2 rounded-full text-sm';
             } else {
                 document.getElementById('voice-status').classList.remove('hidden');
             }
@@ -2282,15 +2428,108 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
             }
         }
 
+        // 中文語音輸入
+        let chineseRecognition = null;
+        
+        function startChineseVoiceInput() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                alert('您的瀏覽器不支援語音輸入功能，請使用 Chrome 或 Edge 瀏覽器');
+                return;
+            }
+
+            // 如果正在聆聽就停止
+            if (chineseRecognition && isListening) {
+                chineseRecognition.stop();
+                return;
+            }
+
+            chineseRecognition = new SpeechRecognition();
+            chineseRecognition.lang = 'zh-TW';  // 辨識繁體中文
+            chineseRecognition.continuous = false;
+            chineseRecognition.interimResults = true;
+
+            const targetInput = document.getElementById('chat-input');
+            const statusDiv = document.getElementById('chat-voice-status');
+            const statusText = document.getElementById('voice-status-text');
+            const zhBtn = document.getElementById('chat-mic-zh-btn');
+
+            chineseRecognition.onstart = function() {
+                isListening = true;
+                statusDiv.classList.remove('hidden');
+                statusText.textContent = '請說中文，AI 會教你英文怎麼說...';
+                statusDiv.querySelector('div').className = 'inline-flex items-center gap-2 bg-amber-500/20 text-amber-400 px-4 py-2 rounded-full text-sm';
+                zhBtn.classList.add('animate-pulse', 'ring-4', 'ring-amber-500/50');
+            };
+
+            chineseRecognition.onend = function() {
+                isListening = false;
+                statusDiv.classList.add('hidden');
+                zhBtn.classList.remove('animate-pulse', 'ring-4', 'ring-amber-500/50');
+            };
+
+            chineseRecognition.onerror = function(event) {
+                console.error('中文語音辨識錯誤:', event.error);
+                isListening = false;
+                statusDiv.classList.add('hidden');
+                zhBtn.classList.remove('animate-pulse', 'ring-4', 'ring-amber-500/50');
+                
+                if (event.error === 'no-speech') {
+                    showVoiceError('沒有偵測到聲音，請再試一次');
+                } else if (event.error === 'not-allowed') {
+                    showVoiceError('請允許使用麥克風權限');
+                }
+            };
+
+            chineseRecognition.onresult = function(event) {
+                let finalTranscript = '';
+                let interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                if (interimTranscript) {
+                    targetInput.value = interimTranscript;
+                    targetInput.style.color = '#fbbf24'; // 中文用橘色顯示
+                }
+
+                if (finalTranscript) {
+                    targetInput.value = finalTranscript;
+                    targetInput.style.color = '#fbbf24';
+                    statusDiv.classList.add('hidden');
+                    playSound('correct');
+                }
+            };
+
+            try {
+                chineseRecognition.start();
+            } catch (e) {
+                console.error('無法啟動中文語音辨識:', e);
+            }
+        }
+
         function updateMicButtonState(listening) {
-            const micBtns = document.querySelectorAll('[id$="-mic-btn"]');
-            micBtns.forEach(btn => {
+            // 只處理英文麥克風按鈕（排除中文按鈕和typing按鈕）
+            const chatMicBtn = document.getElementById('chat-mic-btn');
+            const typingMicBtn = document.getElementById('typing-mic-btn');
+            
+            [chatMicBtn, typingMicBtn].forEach(btn => {
+                if (!btn) return;
                 if (listening) {
-                    btn.classList.add('animate-pulse', 'ring-4', 'ring-red-500/50');
-                    btn.innerHTML = '<i class="fa-solid fa-stop text-xl"></i>';
+                    btn.classList.add('animate-pulse', 'ring-4', 'ring-blue-500/50');
+                    btn.innerHTML = '<i class="fa-solid fa-stop text-lg"></i>';
                 } else {
-                    btn.classList.remove('animate-pulse', 'ring-4', 'ring-red-500/50');
-                    btn.innerHTML = '<i class="fa-solid fa-microphone text-xl"></i>';
+                    btn.classList.remove('animate-pulse', 'ring-4', 'ring-blue-500/50');
+                    btn.innerHTML = btn.id === 'chat-mic-btn' ? 
+                        '<span class="text-sm font-bold">EN</span>' : 
+                        '<i class="fa-solid fa-microphone text-lg"></i>';
                     
                     // 隱藏所有聆聽狀態
                     document.getElementById('chat-voice-status')?.classList.add('hidden');
