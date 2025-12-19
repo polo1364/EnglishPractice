@@ -767,35 +767,28 @@
                             <!-- 輸入區 -->
                             <div class="p-4 border-t border-white/10">
                                 <div class="flex gap-2">
-                                    <!-- 中文語音輸入按鈕 -->
-                                    <button onclick="startChineseVoiceInput()" id="chat-mic-zh-btn"
-                                        class="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center hover:scale-110 transition shrink-0"
-                                        title="用中文說，AI教你英文怎麼講">
-                                        <span class="text-sm font-bold">中</span>
-                                    </button>
-                                    <!-- 英文語音輸入按鈕 -->
-                                    <button onclick="startVoiceInput('chat-input')" id="chat-mic-btn"
-                                        class="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center hover:scale-110 transition shrink-0"
-                                        title="用英文說，練習對話">
-                                        <span class="text-sm font-bold">EN</span>
+                                    <!-- 智能語音輸入按鈕（自動判斷中英文） -->
+                                    <button onclick="startSmartVoiceInput('chat-input')" id="chat-mic-btn"
+                                        class="w-12 h-12 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 rounded-full flex items-center justify-center hover:scale-110 transition shrink-0"
+                                        title="點擊說話，自動識別中英文">
+                                        <i class="fa-solid fa-microphone text-lg"></i>
                                     </button>
                                     <input type="text" id="chat-input" 
                                         class="flex-1 bg-white/10 border border-white/20 rounded-full px-5 py-3 focus:border-rose-500 focus:outline-none transition text-base"
-                                        placeholder="用英文對話，或輸入中文讓 AI 教你..."
+                                        placeholder="說中文或英文，或直接打字..."
                                         onkeypress="if(event.key==='Enter') sendChat()">
                                     <button onclick="sendChat()" class="w-12 h-12 bg-gradient-to-r from-rose-500 to-purple-500 rounded-full flex items-center justify-center hover:opacity-90 hover:scale-105 transition shrink-0" title="發送">
                                         <i class="fa-solid fa-paper-plane"></i>
                                     </button>
                                 </div>
                                 <p class="text-xs text-gray-500 mt-2 text-center">
-                                    <span class="text-amber-400 font-bold">中</span> 說中文讓AI教你 · 
-                                    <span class="text-blue-400 font-bold">EN</span> 說英文練對話 · 
+                                    <i class="fa-solid fa-microphone text-purple-400 mr-1"></i>點麥克風說話，自動識別中英文 · 
                                     <i class="fa-solid fa-keyboard text-gray-400 mr-1"></i>或直接打字
                                 </p>
                                 <!-- 語音辨識狀態 -->
                                 <div id="chat-voice-status" class="hidden mt-2 text-center">
-                                    <div class="inline-flex items-center gap-2 bg-blue-500/20 text-blue-400 px-4 py-2 rounded-full text-sm">
-                                        <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                                    <div class="inline-flex items-center gap-2 bg-purple-500/20 text-purple-400 px-4 py-2 rounded-full text-sm">
+                                        <span class="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></span>
                                         <span id="voice-status-text">正在聆聽...</span>
                                     </div>
                                 </div>
@@ -2315,123 +2308,11 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
             loadContent();
         }
 
-        // ===== 語音輸入功能 =====
-        let recognition = null;
+        // ===== 智能語音輸入功能（自動判斷中英文）=====
+        let currentRecognition = null;
         let isListening = false;
 
-        function initSpeechRecognition() {
-            // 檢查瀏覽器是否支援語音辨識
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            
-            if (!SpeechRecognition) {
-                console.log('此瀏覽器不支援語音辨識');
-                // 隱藏麥克風按鈕
-                document.querySelectorAll('[id$="-mic-btn"]').forEach(btn => {
-                    btn.style.display = 'none';
-                });
-                return false;
-            }
-
-            recognition = new SpeechRecognition();
-            recognition.lang = 'en-US';  // 辨識英文
-            recognition.continuous = false;
-            recognition.interimResults = true;
-            recognition.maxAlternatives = 1;
-
-            recognition.onstart = function() {
-                isListening = true;
-                updateMicButtonState(true);
-            };
-
-            recognition.onend = function() {
-                isListening = false;
-                updateMicButtonState(false);
-            };
-
-            recognition.onerror = function(event) {
-                console.error('語音辨識錯誤:', event.error);
-                isListening = false;
-                updateMicButtonState(false);
-                
-                if (event.error === 'no-speech') {
-                    showVoiceError('沒有偵測到聲音，請再試一次');
-                } else if (event.error === 'not-allowed') {
-                    showVoiceError('請允許使用麥克風權限');
-                }
-            };
-
-            return true;
-        }
-
-        function startVoiceInput(targetInputId) {
-            if (!recognition) {
-                if (!initSpeechRecognition()) {
-                    alert('您的瀏覽器不支援語音輸入功能，請使用 Chrome 或 Edge 瀏覽器');
-                    return;
-                }
-            }
-
-            if (isListening) {
-                recognition.stop();
-                return;
-            }
-
-            const targetInput = document.getElementById(targetInputId);
-            
-            // 顯示聆聽狀態
-            if (targetInputId === 'chat-input') {
-                const statusDiv = document.getElementById('chat-voice-status');
-                const statusText = document.getElementById('voice-status-text');
-                statusDiv.classList.remove('hidden');
-                statusText.textContent = '正在聆聽您說的英文...';
-                statusDiv.querySelector('div').className = 'inline-flex items-center gap-2 bg-blue-500/20 text-blue-400 px-4 py-2 rounded-full text-sm';
-            } else {
-                document.getElementById('voice-status').classList.remove('hidden');
-            }
-
-            recognition.onresult = function(event) {
-                let finalTranscript = '';
-                let interimTranscript = '';
-
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    const transcript = event.results[i][0].transcript;
-                    if (event.results[i].isFinal) {
-                        finalTranscript += transcript;
-                    } else {
-                        interimTranscript += transcript;
-                    }
-                }
-
-                // 即時顯示辨識結果
-                if (interimTranscript) {
-                    targetInput.value = interimTranscript;
-                    targetInput.style.color = '#94a3b8'; // 暫時結果用灰色
-                }
-
-                if (finalTranscript) {
-                    targetInput.value = finalTranscript;
-                    targetInput.style.color = 'white';
-                    
-                    // 隱藏聆聽狀態
-                    document.getElementById('chat-voice-status')?.classList.add('hidden');
-                    document.getElementById('voice-status')?.classList.add('hidden');
-
-                    // 播放成功音效
-                    playSound('correct');
-                }
-            };
-
-            try {
-                recognition.start();
-            } catch (e) {
-                console.error('無法啟動語音辨識:', e);
-            }
-        }
-
-        // 中文語音輸入
-        let chineseRecognition = null;
-        
-        function startChineseVoiceInput() {
+        function startSmartVoiceInput(targetInputId) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             
             if (!SpeechRecognition) {
@@ -2439,52 +2320,90 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
                 return;
             }
 
-            // 如果正在聆聽就停止
-            if (chineseRecognition && isListening) {
-                chineseRecognition.stop();
+            // 如果正在聆聽，停止它
+            if (isListening && currentRecognition) {
+                try {
+                    currentRecognition.stop();
+                } catch (e) {
+                    console.log('停止語音識別:', e);
+                }
+                cleanupRecognition();
                 return;
             }
 
-            chineseRecognition = new SpeechRecognition();
-            chineseRecognition.lang = 'zh-TW';  // 辨識繁體中文
-            chineseRecognition.continuous = false;
-            chineseRecognition.interimResults = true;
+            // 清理舊的實例（重要：確保每次都是新實例）
+            cleanupRecognition();
 
-            const targetInput = document.getElementById('chat-input');
-            const statusDiv = document.getElementById('chat-voice-status');
+            // 創建新的語音識別實例（每次使用都創建新實例，避免重複使用問題）
+            currentRecognition = new SpeechRecognition();
+            
+            // 設置多語言識別（自動判斷中文或英文）
+            // 優先順序：繁體中文、英文
+            currentRecognition.lang = 'zh-TW,en-US';
+            currentRecognition.continuous = false;
+            currentRecognition.interimResults = true;
+            currentRecognition.maxAlternatives = 1;
+
+            const targetInput = document.getElementById(targetInputId);
+            const statusDiv = targetInputId === 'chat-input' ? document.getElementById('chat-voice-status') : document.getElementById('voice-status');
             const statusText = document.getElementById('voice-status-text');
-            const zhBtn = document.getElementById('chat-mic-zh-btn');
+            const micBtn = document.getElementById(targetInputId === 'chat-input' ? 'chat-mic-btn' : 'typing-mic-btn');
 
-            chineseRecognition.onstart = function() {
-                isListening = true;
+            // 顯示聆聽狀態
+            if (statusDiv) {
                 statusDiv.classList.remove('hidden');
-                statusText.textContent = '請說中文，AI 會教你英文怎麼說...';
-                statusDiv.querySelector('div').className = 'inline-flex items-center gap-2 bg-amber-500/20 text-amber-400 px-4 py-2 rounded-full text-sm';
-                zhBtn.classList.add('animate-pulse', 'ring-4', 'ring-amber-500/50');
-            };
-
-            chineseRecognition.onend = function() {
-                isListening = false;
-                statusDiv.classList.add('hidden');
-                zhBtn.classList.remove('animate-pulse', 'ring-4', 'ring-amber-500/50');
-            };
-
-            chineseRecognition.onerror = function(event) {
-                console.error('中文語音辨識錯誤:', event.error);
-                isListening = false;
-                statusDiv.classList.add('hidden');
-                zhBtn.classList.remove('animate-pulse', 'ring-4', 'ring-amber-500/50');
-                
-                if (event.error === 'no-speech') {
-                    showVoiceError('沒有偵測到聲音，請再試一次');
-                } else if (event.error === 'not-allowed') {
-                    showVoiceError('請允許使用麥克風權限');
+                if (statusText) {
+                    statusText.textContent = '正在聆聽，請說話...';
                 }
+                if (statusDiv.querySelector('div')) {
+                    statusDiv.querySelector('div').className = 'inline-flex items-center gap-2 bg-purple-500/20 text-purple-400 px-4 py-2 rounded-full text-sm';
+                }
+            }
+
+            // 更新按鈕狀態
+            if (micBtn) {
+                micBtn.classList.add('animate-pulse', 'ring-4', 'ring-purple-500/50');
+                micBtn.innerHTML = '<i class="fa-solid fa-stop text-lg"></i>';
+            }
+
+            currentRecognition.onstart = function() {
+                isListening = true;
+                console.log('語音識別已開始');
             };
 
-            chineseRecognition.onresult = function(event) {
+            currentRecognition.onend = function() {
+                console.log('語音識別已結束');
+                // 延遲清理，確保所有事件都處理完
+                setTimeout(() => {
+                    cleanupRecognition();
+                }, 100);
+            };
+
+            currentRecognition.onerror = function(event) {
+                console.error('語音辨識錯誤:', event.error);
+                
+                // 某些錯誤不需要顯示提示（如 no-speech）
+                if (event.error === 'no-speech') {
+                    // 沒有語音，靜默結束
+                    cleanupRecognition();
+                    return;
+                }
+                
+                if (event.error === 'not-allowed') {
+                    showVoiceError('請允許使用麥克風權限');
+                } else if (event.error === 'aborted') {
+                    // 用戶主動停止，不需要提示
+                } else {
+                    showVoiceError('語音識別發生錯誤，請再試一次');
+                }
+                
+                cleanupRecognition();
+            };
+
+            currentRecognition.onresult = function(event) {
                 let finalTranscript = '';
                 let interimTranscript = '';
+                let detectedLanguage = '';
 
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     const transcript = event.results[i][0].transcript;
@@ -2495,47 +2414,91 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
                     }
                 }
 
+                // 檢測語言（根據文字內容判斷）
+                const testText = finalTranscript || interimTranscript;
+                if (testText) {
+                    const hasChinese = /[\u4e00-\u9fff]/.test(testText);
+                    detectedLanguage = hasChinese ? 'zh' : 'en';
+                }
+
+                // 即時顯示辨識結果
                 if (interimTranscript) {
                     targetInput.value = interimTranscript;
-                    targetInput.style.color = '#fbbf24'; // 中文用橘色顯示
+                    // 根據檢測到的語言設置顏色
+                    targetInput.style.color = detectedLanguage === 'zh' ? '#fbbf24' : '#94a3b8';
+                    
+                    // 更新狀態提示
+                    if (statusText) {
+                        statusText.textContent = detectedLanguage === 'zh' 
+                            ? '偵測到中文，AI 會教你英文...' 
+                            : '偵測到英文，練習對話中...';
+                    }
                 }
 
                 if (finalTranscript) {
                     targetInput.value = finalTranscript;
-                    targetInput.style.color = '#fbbf24';
-                    statusDiv.classList.add('hidden');
+                    // 最終結果根據語言設置顏色
+                    targetInput.style.color = detectedLanguage === 'zh' ? '#fbbf24' : '#ffffff';
+                    
+                    // 隱藏聆聽狀態
+                    if (statusDiv) statusDiv.classList.add('hidden');
+                    
+                    // 播放成功音效
                     playSound('correct');
+                    
+                    // 清理實例
+                    cleanupRecognition();
                 }
             };
 
             try {
-                chineseRecognition.start();
+                isListening = true;
+                currentRecognition.start();
             } catch (e) {
-                console.error('無法啟動中文語音辨識:', e);
+                console.error('無法啟動語音辨識:', e);
+                cleanupRecognition();
+                
+                // 如果錯誤是因為已經在運行，先停止再重試
+                if (e.message && e.message.includes('already started')) {
+                    setTimeout(() => {
+                        startSmartVoiceInput(targetInputId);
+                    }, 500);
+                }
             }
         }
 
-        function updateMicButtonState(listening) {
-            // 只處理英文麥克風按鈕（排除中文按鈕和typing按鈕）
+        // 清理語音識別實例
+        function cleanupRecognition() {
+            isListening = false;
+            
+            // 停止並清理實例
+            if (currentRecognition) {
+                try {
+                    currentRecognition.stop();
+                } catch (e) {
+                    // 忽略停止錯誤
+                }
+                currentRecognition = null;
+            }
+
+            // 更新按鈕狀態
             const chatMicBtn = document.getElementById('chat-mic-btn');
             const typingMicBtn = document.getElementById('typing-mic-btn');
             
             [chatMicBtn, typingMicBtn].forEach(btn => {
                 if (!btn) return;
-                if (listening) {
-                    btn.classList.add('animate-pulse', 'ring-4', 'ring-blue-500/50');
-                    btn.innerHTML = '<i class="fa-solid fa-stop text-lg"></i>';
-                } else {
-                    btn.classList.remove('animate-pulse', 'ring-4', 'ring-blue-500/50');
-                    btn.innerHTML = btn.id === 'chat-mic-btn' ? 
-                        '<span class="text-sm font-bold">EN</span>' : 
-                        '<i class="fa-solid fa-microphone text-lg"></i>';
-                    
-                    // 隱藏所有聆聽狀態
-                    document.getElementById('chat-voice-status')?.classList.add('hidden');
-                    document.getElementById('voice-status')?.classList.add('hidden');
-                }
+                btn.classList.remove('animate-pulse', 'ring-4', 'ring-purple-500/50');
+                btn.innerHTML = '<i class="fa-solid fa-microphone text-lg"></i>';
             });
+
+            // 隱藏所有聆聽狀態
+            document.getElementById('chat-voice-status')?.classList.add('hidden');
+            document.getElementById('voice-status')?.classList.add('hidden');
+        }
+
+        // 保留舊的 startVoiceInput 函數以兼容 typing 模式
+        function startVoiceInput(targetInputId) {
+            startSmartVoiceInput(targetInputId);
         }
 
         function showVoiceError(message) {
@@ -2547,9 +2510,15 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
             setTimeout(() => toast.remove(), 3000);
         }
 
-        // 初始化語音辨識
+        // 檢查語音辨識支援（不需要預先初始化，按需創建）
         document.addEventListener('DOMContentLoaded', () => {
-            initSpeechRecognition();
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                // 隱藏所有麥克風按鈕
+                document.querySelectorAll('[id$="-mic-btn"]').forEach(btn => {
+                    btn.style.display = 'none';
+                });
+            }
         });
 
         function resetAllData() {
