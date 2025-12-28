@@ -10,32 +10,98 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root {
-            --primary: #58cc02;
-            --primary-dark: #46a302;
-            --secondary: #1cb0f6;
-            --gold: #ffc800;
-            --danger: #ff4b4b;
-            --bg-dark: #131f24;
-            --bg-card: #1a2c35;
-            --text-light: #afafaf;
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --primary-light: #34d399;
+            --secondary: #3b82f6;
+            --secondary-dark: #2563eb;
+            --accent: #8b5cf6;
+            --accent-light: #a78bfa;
+            --gold: #fbbf24;
+            --gold-light: #fcd34d;
+            --danger: #ef4444;
+            --danger-light: #f87171;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --text-light: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --border-hover: rgba(255, 255, 255, 0.2);
         }
 
-        * { font-family: 'Nunito', sans-serif; }
+        * { 
+            font-family: 'Nunito', sans-serif;
+            box-sizing: border-box;
+        }
         
         body {
-            background: linear-gradient(135deg, var(--bg-dark) 0%, #0f1a1f 100%);
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            background-attachment: fixed;
             min-height: 100vh;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body > * {
+            position: relative;
+            z-index: 1;
         }
 
         .glass-card {
-            background: rgba(26, 44, 53, 0.8);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 
+                0 8px 32px 0 rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .glow-green { box-shadow: 0 0 20px rgba(88, 204, 2, 0.3); }
-        .glow-blue { box-shadow: 0 0 20px rgba(28, 176, 246, 0.3); }
-        .glow-gold { box-shadow: 0 0 20px rgba(255, 200, 0, 0.3); }
+        .glass-card:hover {
+            background: rgba(30, 41, 59, 0.85);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 
+                0 12px 40px 0 rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .glow-green { 
+            box-shadow: 
+                0 0 20px rgba(16, 185, 129, 0.4),
+                0 0 40px rgba(16, 185, 129, 0.2);
+        }
+        .glow-blue { 
+            box-shadow: 
+                0 0 20px rgba(59, 130, 246, 0.4),
+                0 0 40px rgba(59, 130, 246, 0.2);
+        }
+        .glow-gold { 
+            box-shadow: 
+                0 0 20px rgba(251, 191, 36, 0.4),
+                0 0 40px rgba(251, 191, 36, 0.2);
+        }
+        .glow-purple {
+            box-shadow: 
+                0 0 20px rgba(139, 92, 246, 0.4),
+                0 0 40px rgba(139, 92, 246, 0.2);
+        }
 
         /* Flashcard 3D 翻轉 */
         .flashcard { perspective: 1500px; }
@@ -52,69 +118,202 @@
 
         /* 進度條動畫 */
         .progress-fill {
-            transition: width 0.5s ease-out;
-            background: linear-gradient(90deg, var(--primary), #7cd836);
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 50%, var(--primary) 100%);
+            background-size: 200% 100%;
+            animation: progress-shine 2s ease-in-out infinite;
+            box-shadow: 
+                0 0 10px rgba(16, 185, 129, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+        @keyframes progress-shine {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
 
         /* 按鈕效果 */
         .btn-primary {
-            background: var(--primary);
-            box-shadow: 0 4px 0 var(--primary-dark);
-            transition: all 0.1s;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            box-shadow: 
+                0 4px 14px 0 rgba(16, 185, 129, 0.4),
+                0 2px 4px 0 rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 6px 20px 0 rgba(16, 185, 129, 0.5),
+                0 4px 6px 0 rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
         }
         .btn-primary:active {
-            box-shadow: 0 2px 0 var(--primary-dark);
-            transform: translateY(2px);
+            transform: translateY(0);
+            box-shadow: 
+                0 2px 8px 0 rgba(16, 185, 129, 0.3),
+                inset 0 2px 4px 0 rgba(0, 0, 0, 0.2);
         }
 
         .btn-option {
-            background: rgba(255,255,255,0.05);
-            border: 2px solid rgba(255,255,255,0.2);
-            transition: all 0.2s;
+            background: rgba(30, 41, 59, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-option::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(59, 130, 246, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.4s, height 0.4s;
+        }
+        .btn-option:hover::before {
+            width: 300px;
+            height: 300px;
         }
         .btn-option:hover {
             border-color: var(--secondary);
-            background: rgba(28, 176, 246, 0.1);
+            background: rgba(59, 130, 246, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
         .btn-option.correct {
             border-color: var(--primary) !important;
-            background: rgba(88, 204, 2, 0.2) !important;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.15)) !important;
             animation: pulse-green 0.5s;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4) !important;
         }
         .btn-option.wrong {
             border-color: var(--danger) !important;
-            background: rgba(255, 75, 75, 0.2) !important;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.15)) !important;
             animation: shake 0.5s;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4) !important;
         }
 
         @keyframes pulse-green {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.02); }
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+            }
+            50% { 
+                transform: scale(1.05);
+                box-shadow: 0 0 30px rgba(16, 185, 129, 0.6);
+            }
         }
 
         @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            20%, 60% { transform: translateX(-5px); }
-            40%, 80% { transform: translateX(5px); }
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-8px) rotate(-2deg); }
+            20%, 40%, 60%, 80% { transform: translateX(8px) rotate(2deg); }
         }
 
         @keyframes slideIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { 
+                opacity: 0; 
+                transform: translateY(30px) scale(0.95);
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1);
+            }
         }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+            0%, 100% { 
+                transform: translateY(0) rotate(0deg);
+            }
+            33% { 
+                transform: translateY(-10px) rotate(2deg);
+            }
+            66% { 
+                transform: translateY(-5px) rotate(-2deg);
+            }
         }
 
-        .animate-slide { animation: slideIn 0.5s ease-out; }
-        .animate-float { animation: float 3s ease-in-out infinite; }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes scaleIn {
+            from { 
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to { 
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .animate-slide { 
+            animation: slideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .animate-float { 
+            animation: float 4s ease-in-out infinite;
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        .animate-scale-in {
+            animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
 
         /* 統計卡片 */
         .stat-card {
-            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
-            border: 1px solid rgba(255,255,255,0.1);
+            background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06));
+            border: 1px solid rgba(255,255,255,0.15);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .stat-card:hover {
+            background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.08));
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 模式按鈕改進 */
+        .mode-btn, .mobile-mode-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .mode-btn::before, .mobile-mode-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .mode-btn:hover::before, .mobile-mode-btn:hover::before {
+            left: 100%;
+        }
+        .mode-btn:hover, .mobile-mode-btn:hover {
+            transform: translateX(4px) translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         /* XP 動畫 */
@@ -139,15 +338,21 @@
         .sound-wave {
             display: flex;
             align-items: center;
-            gap: 3px;
-            height: 30px;
+            gap: 4px;
+            height: 40px;
         }
         .sound-wave span {
-            width: 4px;
-            background: var(--secondary);
-            border-radius: 2px;
-            animation: wave 1s ease-in-out infinite;
+            width: 5px;
+            background: linear-gradient(180deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+            border-radius: 3px;
+            animation: wave 1.2s ease-in-out infinite;
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
         }
+        .sound-wave span:nth-child(1) { animation-delay: 0s; }
+        .sound-wave span:nth-child(2) { animation-delay: 0.1s; }
+        .sound-wave span:nth-child(3) { animation-delay: 0.2s; }
+        .sound-wave span:nth-child(4) { animation-delay: 0.3s; }
+        .sound-wave span:nth-child(5) { animation-delay: 0.4s; }
         .sound-wave span:nth-child(1) { animation-delay: 0s; height: 40%; }
         .sound-wave span:nth-child(2) { animation-delay: 0.1s; height: 70%; }
         .sound-wave span:nth-child(3) { animation-delay: 0.2s; height: 100%; }
@@ -155,8 +360,85 @@
         .sound-wave span:nth-child(5) { animation-delay: 0.4s; height: 40%; }
 
         @keyframes wave {
-            0%, 100% { transform: scaleY(1); }
-            50% { transform: scaleY(0.5); }
+            0%, 100% { 
+                transform: scaleY(0.4);
+                opacity: 0.7;
+            }
+            50% { 
+                transform: scaleY(1.2);
+                opacity: 1;
+            }
+        }
+
+        /* 輸入框改進 */
+        .typing-input, input[type="text"], input[type="password"] {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .typing-input:focus, input[type="text"]:focus, input[type="password"]:focus {
+            transform: scale(1.02);
+            box-shadow: 
+                0 0 0 3px rgba(59, 130, 246, 0.2),
+                0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 卡片內容動畫 */
+        .view-section {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* 徽章和標籤改進 */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .badge:hover {
+            transform: scale(1.05);
+        }
+
+        /* 改進滾動條 */
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* 自定義滾動條（可選，如果需要顯示） */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* 改進選擇框 */
+        select {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        select:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        select:focus {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 0 0 3px rgba(59, 130, 246, 0.2),
+                0 6px 16px rgba(0, 0, 0, 0.3);
         }
 
         /* 打字輸入 */
@@ -349,6 +631,14 @@
                             <div class="text-xs opacity-60">打字記憶單字</div>
                         </div>
                     </button>
+                    <button onclick="switchMode('combine'); toggleMobileMenu();" data-mode="combine" 
+                        class="mobile-mode-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 border-2 border-transparent">
+                        <i class="fa-solid fa-puzzle-piece text-xl text-indigo-400"></i>
+                        <div class="text-left">
+                            <div class="font-bold">單字組合</div>
+                            <div class="text-xs opacity-60">組合單字練習</div>
+                        </div>
+                    </button>
                     <button onclick="switchMode('listening'); toggleMobileMenu();" data-mode="listening" 
                         class="mobile-mode-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 border-2 border-transparent">
                         <i class="fa-solid fa-headphones text-xl text-cyan-400"></i>
@@ -390,7 +680,7 @@
         <!-- 主內容區 -->
         <div class="flex-1 flex overflow-hidden">
             <!-- 側邊欄 (桌面版) -->
-            <aside class="w-72 glass-card border-r border-white/10 p-4 hidden lg:block overflow-y-auto hide-scrollbar">
+            <aside class="w-72 glass-card border-r border-white/10 p-6 hidden lg:block overflow-y-auto hide-scrollbar">
                 <h3 class="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2">
                     <i class="fa-solid fa-book-open text-green-500"></i> 選擇學習模式
                 </h3>
@@ -420,6 +710,15 @@
                         <div class="text-left">
                             <div class="font-bold">拼寫練習</div>
                             <div class="text-xs opacity-60">打字記憶單字</div>
+                        </div>
+                    </button>
+
+                    <button onclick="switchMode('combine')" data-mode="combine" 
+                        class="mode-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 border-2 border-transparent">
+                        <i class="fa-solid fa-puzzle-piece text-xl text-indigo-400"></i>
+                        <div class="text-left">
+                            <div class="font-bold">單字組合</div>
+                            <div class="text-xs opacity-60">組合單字練習</div>
                         </div>
                     </button>
 
@@ -479,14 +778,23 @@
             </aside>
 
             <!-- 主學習區 -->
-            <main class="flex-1 overflow-y-auto hide-scrollbar p-6">
-                <div class="max-w-3xl mx-auto">
+            <main class="flex-1 overflow-y-auto hide-scrollbar p-6 md:p-8">
+                <div class="max-w-4xl mx-auto">
                     
                     <!-- 載入中 -->
-                    <div id="loading" class="hidden fixed inset-0 bg-black/50 z-40 flex items-center justify-center">
-                        <div class="text-center">
-                            <div class="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                            <p class="mt-4 font-bold text-lg">AI 正在生成學習內容...</p>
+                    <div id="loading" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex items-center justify-center">
+                        <div class="text-center animate-scale-in">
+                            <div class="relative w-20 h-20 mx-auto mb-6">
+                                <div class="absolute inset-0 border-4 border-primary/30 rounded-full"></div>
+                                <div class="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <i class="fa-solid fa-sparkles text-primary text-2xl animate-pulse"></i>
+                                </div>
+                            </div>
+                            <p class="font-bold text-xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                                AI 正在生成學習內容...
+                            </p>
+                            <p class="mt-2 text-sm text-text-muted">請稍候片刻</p>
                         </div>
                     </div>
 
@@ -675,6 +983,83 @@
                             <button onclick="checkTyping()" class="btn-primary w-full max-w-md mx-auto block mt-6 py-4 rounded-xl font-bold text-lg">
                                 確認答案
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- 單字組合模式 -->
+                    <div id="view-combine" class="view-section hidden">
+                        <div class="glass-card rounded-3xl p-8 animate-slide">
+                            <div class="text-center mb-8">
+                                <div class="inline-block bg-indigo-500/20 text-indigo-400 px-4 py-2 rounded-full text-sm font-semibold mb-4">
+                                    <i class="fa-solid fa-puzzle-piece mr-2"></i>單字組合
+                                </div>
+                                <p class="text-gray-400 mb-4 text-base">將兩個有意義的單字組合起來，拼出完整的複合詞</p>
+                                <h2 id="combine-hint" class="text-3xl font-bold text-indigo-400 mb-2"></h2>
+                                <p id="combine-pos" class="text-gray-500"></p>
+                            </div>
+
+                            <div class="flex justify-center gap-3 mb-8">
+                                <button onclick="speakSlow()" 
+                                    class="w-14 h-14 bg-amber-500/20 border-2 border-amber-500/50 rounded-full flex flex-col items-center justify-center hover:scale-110 transition"
+                                    title="慢速播放">
+                                    <i class="fa-solid fa-volume-low text-amber-400"></i>
+                                    <span class="text-[9px] text-amber-400">慢速</span>
+                                </button>
+                                <button onclick="speakNormal()" 
+                                    class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center hover:scale-110 transition shadow-lg"
+                                    title="正常速度">
+                                    <i class="fa-solid fa-volume-high text-2xl text-white"></i>
+                                </button>
+                                <button onclick="speakWord()" 
+                                    class="w-14 h-14 bg-green-500/20 border-2 border-green-500/50 rounded-full flex flex-col items-center justify-center hover:scale-110 transition"
+                                    title="播放兩次">
+                                    <i class="fa-solid fa-repeat text-green-400"></i>
+                                    <span class="text-[9px] text-green-400">x2</span>
+                                </button>
+                            </div>
+
+                            <!-- 單字組合區域 -->
+                            <div class="max-w-2xl mx-auto">
+                                <div class="text-center mb-6">
+                                    <div class="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6">
+                                        <!-- 第一部分 -->
+                                        <div class="flex flex-col items-center">
+                                            <span id="combine-part1" class="bg-indigo-500/20 px-6 py-4 rounded-xl border-2 border-indigo-500/50 text-indigo-300 text-3xl md:text-4xl font-black mb-2"></span>
+                                            <span id="combine-part1-mean" class="text-sm text-indigo-400 font-semibold"></span>
+                                        </div>
+                                        <span class="text-indigo-400 text-3xl font-black">+</span>
+                                        <!-- 第二部分 -->
+                                        <div class="flex flex-col items-center">
+                                            <span id="combine-part2" class="bg-purple-500/20 px-6 py-4 rounded-xl border-2 border-purple-500/50 text-purple-300 text-3xl md:text-4xl font-black mb-2"></span>
+                                            <span id="combine-part2-mean" class="text-sm text-purple-400 font-semibold"></span>
+                                        </div>
+                                        <span class="text-gray-400 text-3xl font-black mx-2">=</span>
+                                        <!-- 結果 -->
+                                        <div class="flex flex-col items-center">
+                                            <span id="combine-result" class="bg-white/10 px-6 py-4 rounded-xl border-2 border-dashed border-white/30 text-white text-3xl md:text-4xl font-black min-w-[180px]">?</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <p class="text-center text-gray-500 text-sm mb-6">
+                                    <i class="fa-solid fa-hand-pointer mr-1"></i>在下方輸入框中輸入完整單字
+                                </p>
+
+                                <!-- 輸入區域 -->
+                                <div class="relative max-w-md mx-auto mb-6">
+                                    <input type="text" id="combine-input" 
+                                        class="typing-input w-full py-4 text-center text-2xl font-bold"
+                                        placeholder="輸入完整單字..."
+                                        autocomplete="off"
+                                        onkeypress="if(event.key==='Enter') checkCombine()">
+                                </div>
+
+                                <div id="combine-feedback" class="hidden mt-6 p-4 rounded-xl text-center"></div>
+
+                                <button onclick="checkCombine()" class="btn-primary w-full max-w-md mx-auto block mt-6 py-4 rounded-xl font-bold text-lg">
+                                    確認答案
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -946,6 +1331,18 @@
                 { label: '🏡 居家生活', value: 'Home & Living' },
                 { label: '😊 情緒心理', value: 'Emotions & Psychology' }
             ],
+            combine: [
+                { label: '🏠 日常生活', value: 'Daily Life' },
+                { label: '✈️ 旅遊出行', value: 'Travel' },
+                { label: '🍔 美食餐飲', value: 'Food & Drink' },
+                { label: '💼 商務職場', value: 'Business' },
+                { label: '🏥 健康醫療', value: 'Health' },
+                { label: '💻 科技數位', value: 'Technology' },
+                { label: '🎓 校園學習', value: 'School & Education' },
+                { label: '🏋️ 運動健身', value: 'Sports & Fitness' },
+                { label: '🏡 居家生活', value: 'Home & Living' },
+                { label: '😊 情緒心理', value: 'Emotions & Psychology' }
+            ],
             listening: [
                 { label: '🏠 日常生活', value: 'Daily Life' },
                 { label: '✈️ 旅遊出行', value: 'Travel' },
@@ -1140,7 +1537,7 @@
             document.getElementById(`view-${mode}`).classList.remove('hidden');
 
             // 顯示/隱藏進度條
-            if (['flashcard', 'quiz', 'typing', 'listening'].includes(mode)) {
+            if (['flashcard', 'quiz', 'typing', 'combine', 'listening'].includes(mode)) {
                 document.getElementById('session-progress').classList.remove('hidden');
             } else {
                 document.getElementById('session-progress').classList.add('hidden');
@@ -1252,7 +1649,17 @@
             'Choose words that have interesting etymology or stories.',
             'Focus on words used in professional settings.',
             'Include some compound words or collocations.',
-            'Choose words that sound similar but have different meanings.'
+            'Choose words that sound similar but have different meanings.',
+            'Prioritize words with interesting visual or conceptual connections.',
+            'Include words from different semantic fields and categories.',
+            'Focus on words that are culturally significant or contextually rich.',
+            'Choose words with multiple meanings or nuanced usage.',
+            'Include words that are trending or commonly used in modern English.',
+            'Focus on words that create vivid mental images.',
+            'Choose words from different registers (formal, informal, slang).',
+            'Include words that are fun to learn and memorable.',
+            'Focus on words with interesting word formation patterns.',
+            'Choose words that are useful for specific situations or scenarios.'
         ];
 
         // 取得隨機指令
@@ -1264,15 +1671,62 @@
         function getRandomSeed() {
             const letters = 'abcdefghijklmnopqrstuvwxyz';
             const randomLetter = letters[Math.floor(Math.random() * letters.length)];
+            const randomLetter2 = letters[Math.floor(Math.random() * letters.length)];
+            const randomNum = Math.floor(Math.random() * 10) + 1;
             const seeds = [
                 `Start with words beginning with "${randomLetter.toUpperCase()}".`,
                 `Avoid words starting with common letters like A, B, C, E, S, T.`,
-                `Include at least one word with 3+ syllables.`,
+                `Include at least one word with ${randomNum}+ syllables.`,
                 `Include words from different word families.`,
                 `Mix formal and informal vocabulary.`,
+                `Focus on words with ${randomNum}-${randomNum + 2} letters.`,
+                `Prioritize words containing the letter "${randomLetter.toUpperCase()}" or "${randomLetter2.toUpperCase()}".`,
+                `Include words that are ${randomNum * 10}% more advanced than basic level.`,
+                `Choose words with interesting phonetic patterns.`,
+                `Include words from ${randomNum} different semantic categories.`,
                 ''  // 有時不加限制
             ];
             return seeds[Math.floor(Math.random() * seeds.length)];
+        }
+
+        // 產生複合詞專用的隨機指令
+        function getRandomCompoundInstruction() {
+            const compoundTypes = [
+                'noun + noun combinations',
+                'adjective + noun combinations',
+                'verb + noun combinations',
+                'noun + verb combinations',
+                'adjective + verb combinations'
+            ];
+            const themes = [
+                'nature and environment',
+                'technology and modern life',
+                'emotions and feelings',
+                'activities and actions',
+                'objects and things',
+                'places and locations',
+                'time and seasons',
+                'body and health',
+                'food and cooking',
+                'sports and hobbies'
+            ];
+            const randomType = compoundTypes[Math.floor(Math.random() * compoundTypes.length)];
+            const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+            const randomNum = Math.floor(Math.random() * 5) + 3;
+            
+            const instructions = [
+                `Focus on ${randomType} related to ${randomTheme}.`,
+                `Include ${randomNum} different types of compound word patterns.`,
+                `Prioritize compound words where both parts are common, everyday words.`,
+                `Choose compound words that create new meanings beyond their parts.`,
+                `Include compound words with interesting visual or conceptual connections.`,
+                `Focus on compound words that are frequently used in daily conversation.`,
+                `Include compound words from different word categories and themes.`,
+                `Choose compound words where the combination creates a memorable image.`,
+                `Prioritize compound words that are practical and useful.`,
+                `Include compound words with different stress patterns.`
+            ];
+            return instructions[Math.floor(Math.random() * instructions.length)];
         }
 
         // 生成 Prompt
@@ -1299,12 +1753,16 @@
 
             switch (type) {
                 case 'vocab':
+                    const randomIdVocab = Math.random().toString(36).substring(2, 9);
+                    const randomVariationVocab = Math.floor(Math.random() * 1000);
+                    
                     return `You are an expert English vocabulary teacher. Generate UNIQUE and INTERESTING vocabulary.
 
 **Context:**
 - Topic: "${topic}"
 - Level: ${level} (${levelDesc})
-- Request ID: ${timestamp} (generate different words each time)
+- Request ID: ${timestamp}-${randomIdVocab}-${randomVariationVocab} (generate COMPLETELY DIFFERENT words each time)
+- Session Variation: ${Math.floor(Math.random() * 10000)}
 ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
 
 **IMPORTANT EXCLUSIONS - Do NOT use these words:**
@@ -1321,6 +1779,7 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
 3. Are NOT in any exclusion list above
 4. Are interesting and memorable
 5. Would surprise and engage the learner
+6. **CRITICAL: Generate DIFFERENT words every time. Avoid repeating the same words from previous requests.**
 
 **Output Format (JSON only, no markdown):**
 {
@@ -1336,15 +1795,82 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
     ]
 }`;
 
+                case 'combine':
+                    const randomCompoundInstruction = getRandomCompoundInstruction();
+                    const randomId = Math.random().toString(36).substring(2, 9);
+                    const randomVariation = Math.floor(Math.random() * 1000);
+                    
+                    return `You are an expert English vocabulary teacher. Generate COMPOUND WORDS (複合詞) for word combination practice.
+
+**Context:**
+- Topic: "${topic}"
+- Level: ${level} (${levelDesc})
+- Request ID: ${timestamp}-${randomId}-${randomVariation} (generate COMPLETELY DIFFERENT words each time)
+- Session Variation: ${Math.floor(Math.random() * 10000)}
+${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
+
+**IMPORTANT EXCLUSIONS - Do NOT use these words:**
+- Already learned: [${excludeText}]
+- Too common/basic: [${commonWordsToAvoid}]
+
+**RANDOM VARIATION INSTRUCTIONS:**
+- ${randomCompoundInstruction}
+- ${randomInstruction}
+- ${randomSeed}
+
+**CRITICAL REQUIREMENTS:**
+1. Generate ONLY compound words (複合詞) where the word is made of TWO meaningful parts
+2. Each part must be a valid English word with its own meaning
+3. Examples: rainbow (rain + bow), butterfly (butter + fly), sunflower (sun + flower), notebook (note + book)
+4. Each part should have a clear, simple meaning that students can understand
+5. The combined word should be relevant to "${topic}"
+6. Match ${level} difficulty level
+7. **IMPORTANT: Generate UNIQUE and DIFFERENT words every time. Do NOT repeat common examples like rainbow, butterfly, sunflower unless specifically requested.**
+
+**Output Format (JSON only, no markdown):**
+{
+    "title": "Topic title in English",
+    "words": [
+        {
+            "word": "complete compound word (e.g., rainbow)",
+            "pos": "noun/verb/adj/adv",
+            "mean": "完整單字的繁體中文解釋（簡潔明確）",
+            "part1": {
+                "word": "first part (e.g., rain)",
+                "mean": "第一部分的繁體中文解釋"
+            },
+            "part2": {
+                "word": "second part (e.g., bow)",
+                "mean": "第二部分的繁體中文解釋"
+            },
+            "example": "A natural example sentence using the compound word",
+            "trans": "例句的繁體中文翻譯"
+        }
+    ]
+}
+
+**IMPORTANT:** Each word MUST have both part1 and part2 with their meanings. Do NOT generate words that cannot be split into two meaningful parts.`;
+
                 case 'grammar':
+                    const randomIdGrammar = Math.random().toString(36).substring(2, 9);
+                    const randomVariationGrammar = Math.floor(Math.random() * 1000);
+                    
                     return `You are an expert English grammar teacher creating interactive quiz content.
 
 **Context:**
 - Grammar Topic: "${topic}"
 - CEFR Level: ${level} (${levelDesc})
+- Request ID: ${timestamp}-${randomIdGrammar}-${randomVariationGrammar} (generate COMPLETELY DIFFERENT content each time)
+- Session Variation: ${Math.floor(Math.random() * 10000)}
 - Previously used content to avoid: [${excludeText}]
 
-**Task:** Create a grammar lesson with 3 quiz questions.
+**RANDOM VARIATION INSTRUCTIONS:**
+- ${randomInstruction}
+- Create questions with different sentence structures and contexts
+- Use varied vocabulary and real-world scenarios
+- Include different question types (fill-in-blank, multiple choice, sentence correction)
+
+**Task:** Create a grammar lesson with 3 UNIQUE quiz questions that are DIFFERENT from previous requests.
 
 **Output Format (JSON only, no markdown):**
 {
@@ -1443,9 +1969,9 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
                     body: JSON.stringify({
                     contents: [{ parts: [{ text: prompt }] }],
                     generationConfig: {
-                        temperature: 1.0,  // 提高隨機性
-                        topP: 0.95,        // 增加多樣性
-                        topK: 40,
+                        temperature: 1.2,  // 提高隨機性（最高可到 2.0）
+                        topP: 0.9,        // 增加多樣性
+                        topK: 50,         // 增加候選詞數量
                         maxOutputTokens: 2048
                     }
                     })
@@ -1480,9 +2006,14 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
             document.getElementById('loading').classList.remove('hidden');
 
             try {
-                const type = ['flashcard', 'quiz', 'typing', 'listening'].includes(APP_STATE.currentMode) 
-                    ? 'vocab' 
-                    : APP_STATE.currentMode;
+                let type;
+                if (APP_STATE.currentMode === 'combine') {
+                    type = 'combine';
+                } else if (['flashcard', 'quiz', 'typing', 'listening'].includes(APP_STATE.currentMode)) {
+                    type = 'vocab';
+                } else {
+                    type = APP_STATE.currentMode;
+                }
                 
                 // 合併持久化的學習記錄 + 當前 session 的記錄
                 const persistentHistory = getLearnedWordsForTopic(APP_STATE.currentTopic);
@@ -1498,9 +2029,16 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
                 const data = await callGeminiAPI(prompt);
                 
                 if (data.words) {
-                    APP_STATE.words = data.words;
+                    // 隨機打亂單字順序，增加每次載入的變化
+                    const shuffledWords = [...data.words];
+                    for (let i = shuffledWords.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [shuffledWords[i], shuffledWords[j]] = [shuffledWords[j], shuffledWords[i]];
+                    }
+                    APP_STATE.words = shuffledWords;
                     APP_STATE.words.forEach(w => APP_STATE.historyData.push(w.word));
-                    APP_STATE.currentIndex = 0;
+                    // 隨機選擇起始位置（但通常從第一個開始）
+                    APP_STATE.currentIndex = Math.random() < 0.1 ? Math.floor(Math.random() * Math.min(3, shuffledWords.length)) : 0;
                     renderCurrentMode();
                 } else if (data.concept) {
                     renderGrammar(data);
@@ -1526,6 +2064,9 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
                     break;
                 case 'typing':
                     renderTyping();
+                    break;
+                case 'combine':
+                    renderCombine();
                     break;
                 case 'listening':
                     renderListening();
@@ -1685,6 +2226,77 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
                 showFeedback('typing-feedback', false, '差一點！', `正確答案：${word.word}`);
             }
 
+            setTimeout(nextWord, 1500);
+        }
+
+        // ===== 單字組合模式 =====
+        function renderCombine() {
+            const word = APP_STATE.words[APP_STATE.currentIndex];
+            if (!word) return;
+
+            APP_STATE.isAnswered = false;
+            document.getElementById('combine-hint').textContent = word.mean;
+            document.getElementById('combine-pos').textContent = word.pos;
+            document.getElementById('combine-input').value = '';
+            document.getElementById('combine-feedback').classList.add('hidden');
+            
+            // 使用複合詞的兩個部分
+            if (word.part1 && word.part2) {
+                document.getElementById('combine-part1').textContent = word.part1.word;
+                document.getElementById('combine-part1-mean').textContent = word.part1.mean;
+                document.getElementById('combine-part2').textContent = word.part2.word;
+                document.getElementById('combine-part2-mean').textContent = word.part2.mean;
+            } else {
+                // 如果資料格式不正確，顯示錯誤訊息
+                document.getElementById('combine-part1').textContent = '?';
+                document.getElementById('combine-part1-mean').textContent = '資料錯誤';
+                document.getElementById('combine-part2').textContent = '?';
+                document.getElementById('combine-part2-mean').textContent = '資料錯誤';
+            }
+            
+            document.getElementById('combine-result').textContent = '?';
+            document.getElementById('combine-result').classList.remove('border-green-500', 'bg-green-500/20', 'text-green-300', 'border-red-500', 'bg-red-500/20', 'text-red-300');
+            document.getElementById('combine-result').classList.add('border-dashed', 'border-white/30', 'text-white');
+            
+            // 儲存正確答案供檢查使用
+            APP_STATE.combineAnswer = word.word;
+            
+            document.getElementById('combine-input').focus();
+        }
+
+        function checkCombine() {
+            if (APP_STATE.isAnswered) return;
+            
+            const input = document.getElementById('combine-input').value.trim().toLowerCase();
+            const correct = APP_STATE.combineAnswer.toLowerCase();
+
+            APP_STATE.isAnswered = true;
+            userData.totalAnswered++;
+
+            if (input === correct) {
+                userData.totalCorrect++;
+                saveUserData();
+                playSound('correct');
+                addXP(15);
+                showFeedback('combine-feedback', true, '完美組合！', '');
+                document.getElementById('combine-result').textContent = correct;
+                document.getElementById('combine-result').classList.remove('border-dashed', 'border-white/30');
+                document.getElementById('combine-result').classList.add('border-green-500', 'bg-green-500/20', 'text-green-300');
+                confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+            } else {
+                saveUserData();
+                playSound('wrong');
+                showFeedback('combine-feedback', false, '再試試看！', `正確答案：${correct}`);
+                document.getElementById('combine-result').textContent = correct;
+                document.getElementById('combine-result').classList.remove('border-dashed', 'border-white/30');
+                document.getElementById('combine-result').classList.add('border-red-500', 'bg-red-500/20', 'text-red-300');
+            }
+
+            setTimeout(() => {
+                document.getElementById('combine-result').classList.remove('border-green-500', 'bg-green-500/20', 'text-green-300', 'border-red-500', 'bg-red-500/20', 'text-red-300');
+                document.getElementById('combine-result').classList.add('border-dashed', 'border-white/30', 'text-white');
+            }, 1500);
+            
             setTimeout(nextWord, 1500);
         }
 
@@ -2337,9 +2949,19 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
             // 創建新的語音識別實例（每次使用都創建新實例，避免重複使用問題）
             currentRecognition = new SpeechRecognition();
             
-            // 設置多語言識別（自動判斷中文或英文）
-            // 優先順序：繁體中文、英文
-            currentRecognition.lang = 'zh-TW,en-US';
+            // 設置語言識別（根據目標輸入框決定）
+            // 注意：SpeechRecognition API 一次只能設置一個語言
+            // 對於聊天模式，我們使用中文優先，因為用戶可能說中文讓 AI 教英文
+            // 如果用戶說英文，識別結果也會是英文（只是識別準確度可能稍低）
+            if (targetInputId === 'chat-input') {
+                // 聊天模式：使用中文，因為用戶可能說中文讓 AI 教英文
+                // 如果用戶說英文，識別結果也會包含英文（雖然設置為中文，但英文也能識別）
+                currentRecognition.lang = 'zh-TW';
+            } else {
+                // 其他模式（如拼寫練習）：只使用英文
+                currentRecognition.lang = 'en-US';
+            }
+            
             currentRecognition.continuous = false;
             currentRecognition.interimResults = true;
             currentRecognition.maxAlternatives = 1;
@@ -2373,10 +2995,20 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
 
             currentRecognition.onend = function() {
                 console.log('語音識別已結束');
+                
+                // 清除超時計時器
+                if (currentRecognition._timeoutId) {
+                    clearTimeout(currentRecognition._timeoutId);
+                    currentRecognition._timeoutId = null;
+                }
+                
                 // 延遲清理，確保所有事件都處理完
                 setTimeout(() => {
-                    cleanupRecognition();
-                }, 100);
+                    // 只有在沒有最終結果時才清理（避免在 onresult 處理時衝突）
+                    if (!isListening || !currentRecognition) {
+                        cleanupRecognition();
+                    }
+                }, 200);
             };
 
             currentRecognition.onerror = function(event) {
@@ -2385,14 +3017,24 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
                 // 某些錯誤不需要顯示提示（如 no-speech）
                 if (event.error === 'no-speech') {
                     // 沒有語音，靜默結束
+                    if (statusText) {
+                        statusText.textContent = '未偵測到語音，請再試一次';
+                        setTimeout(() => {
+                            if (statusDiv) statusDiv.classList.add('hidden');
+                        }, 2000);
+                    }
                     cleanupRecognition();
                     return;
                 }
                 
                 if (event.error === 'not-allowed') {
-                    showVoiceError('請允許使用麥克風權限');
+                    showVoiceError('請允許使用麥克風權限（檢查瀏覽器設定）');
                 } else if (event.error === 'aborted') {
                     // 用戶主動停止，不需要提示
+                } else if (event.error === 'network') {
+                    showVoiceError('網路連線問題，請檢查網路後再試');
+                } else if (event.error === 'audio-capture') {
+                    showVoiceError('無法存取麥克風，請檢查裝置設定');
                 } else {
                     showVoiceError('語音識別發生錯誤，請再試一次');
                 }
@@ -2405,12 +3047,16 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
                 let interimTranscript = '';
                 let detectedLanguage = '';
 
+                // 處理所有結果
                 for (let i = event.resultIndex; i < event.results.length; i++) {
-                    const transcript = event.results[i][0].transcript;
-                    if (event.results[i].isFinal) {
-                        finalTranscript += transcript;
-                    } else {
-                        interimTranscript += transcript;
+                    const result = event.results[i];
+                    if (result && result[0]) {
+                        const transcript = result[0].transcript.trim();
+                        if (result.isFinal) {
+                            finalTranscript += (finalTranscript ? ' ' : '') + transcript;
+                        } else {
+                            interimTranscript += (interimTranscript ? ' ' : '') + transcript;
+                        }
                     }
                 }
 
@@ -2421,48 +3067,96 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
                     detectedLanguage = hasChinese ? 'zh' : 'en';
                 }
 
-                // 即時顯示辨識結果
-                if (interimTranscript) {
+                // 即時顯示辨識結果（臨時結果）
+                if (interimTranscript && targetInput) {
                     targetInput.value = interimTranscript;
                     // 根據檢測到的語言設置顏色
-                    targetInput.style.color = detectedLanguage === 'zh' ? '#fbbf24' : '#94a3b8';
+                    if (targetInputId === 'chat-input') {
+                        targetInput.style.color = detectedLanguage === 'zh' ? '#fbbf24' : '#94a3b8';
+                    }
                     
-                    // 更新狀態提示
-                    if (statusText) {
+                    // 更新狀態提示（僅聊天模式）
+                    if (statusText && targetInputId === 'chat-input') {
                         statusText.textContent = detectedLanguage === 'zh' 
                             ? '偵測到中文，AI 會教你英文...' 
                             : '偵測到英文，練習對話中...';
                     }
                 }
 
-                if (finalTranscript) {
-                    targetInput.value = finalTranscript;
-                    // 最終結果根據語言設置顏色
-                    targetInput.style.color = detectedLanguage === 'zh' ? '#fbbf24' : '#ffffff';
+                // 處理最終結果
+                if (finalTranscript && targetInput) {
+                    // 確保輸入框有值
+                    targetInput.value = finalTranscript.trim();
+                    
+                    // 觸發 input 事件，確保其他監聽器能收到
+                    const inputEvent = new Event('input', { bubbles: true });
+                    targetInput.dispatchEvent(inputEvent);
+                    
+                    // 最終結果根據語言設置顏色（僅聊天模式）
+                    if (targetInputId === 'chat-input') {
+                        targetInput.style.color = detectedLanguage === 'zh' ? '#fbbf24' : '#ffffff';
+                    }
                     
                     // 隱藏聆聽狀態
-                    if (statusDiv) statusDiv.classList.add('hidden');
+                    if (statusDiv) {
+                        statusDiv.classList.add('hidden');
+                    }
                     
                     // 播放成功音效
                     playSound('correct');
                     
+                    // 如果是聊天模式且檢測到中文，可以自動發送或提示
+                    if (targetInputId === 'chat-input' && detectedLanguage === 'zh') {
+                        // 可以選擇自動發送或讓用戶確認
+                        // 這裡我們不自動發送，讓用戶確認後再發送
+                    }
+                    
                     // 清理實例
-                    cleanupRecognition();
+                    setTimeout(() => {
+                        cleanupRecognition();
+                    }, 100);
                 }
             };
 
             try {
+                // 確保輸入框存在
+                if (!targetInput) {
+                    console.error('找不到目標輸入框:', targetInputId);
+                    cleanupRecognition();
+                    return;
+                }
+                
                 isListening = true;
                 currentRecognition.start();
+                
+                // 設置超時保護（30秒後自動停止）
+                const timeoutId = setTimeout(() => {
+                    if (isListening) {
+                        console.log('語音識別超時，自動停止');
+                        cleanupRecognition();
+                        if (statusText) {
+                            statusText.textContent = '聆聽時間過長，已自動停止';
+                            setTimeout(() => {
+                                if (statusDiv) statusDiv.classList.add('hidden');
+                            }, 2000);
+                        }
+                    }
+                }, 30000);
+                
+                // 保存超時 ID 以便清理
+                currentRecognition._timeoutId = timeoutId;
+                
             } catch (e) {
                 console.error('無法啟動語音辨識:', e);
                 cleanupRecognition();
                 
                 // 如果錯誤是因為已經在運行，先停止再重試
-                if (e.message && e.message.includes('already started')) {
+                if (e.message && (e.message.includes('already started') || e.message.includes('already running'))) {
                     setTimeout(() => {
                         startSmartVoiceInput(targetInputId);
                     }, 500);
+                } else {
+                    showVoiceError('無法啟動語音識別，請再試一次');
                 }
             }
         }
@@ -2473,11 +3167,28 @@ ${extraInstruction ? `\n**EXAM FOCUS:** ${extraInstruction}` : ''}
             
             // 停止並清理實例
             if (currentRecognition) {
+                // 清除超時計時器
+                if (currentRecognition._timeoutId) {
+                    clearTimeout(currentRecognition._timeoutId);
+                    currentRecognition._timeoutId = null;
+                }
+                
                 try {
                     currentRecognition.stop();
                 } catch (e) {
                     // 忽略停止錯誤
                 }
+                
+                // 移除所有事件監聽器
+                try {
+                    currentRecognition.onstart = null;
+                    currentRecognition.onend = null;
+                    currentRecognition.onerror = null;
+                    currentRecognition.onresult = null;
+                } catch (e) {
+                    // 忽略錯誤
+                }
+                
                 currentRecognition = null;
             }
 
