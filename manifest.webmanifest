@@ -1,0 +1,17 @@
+{
+  "name": "單字怪獸 LinguaMon",
+  "short_name": "單字怪獸",
+  "description": "養怪獸學英文：闖關抓單字、孵蛋進化、對戰與小遊戲",
+  "lang": "zh-TW",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef7ea",
+  "theme_color": "#58b947",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

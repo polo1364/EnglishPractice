@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
     <meta name="theme-color" content="#eaf6e4">
     <title>單字怪獸 LinguaMon</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/png" href="icons/favicon-64.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="單字怪獸">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
@@ -143,6 +150,59 @@
         .mfront { background: #fff; border: 2px solid var(--line); transform: rotateY(180deg); font-size: .95rem; }
         .mcard.done .mfront { background: var(--green-t); border-color: var(--green); color: var(--green-d); }
         .mcard.miss .mfront { border-color: var(--red); background: var(--red-t); }
+
+        /* ===== Fluent 3D 圖示 ===== */
+        .fe { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -0.22em; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+        .monster .fe, .acc .fe, .b-mon .fe, .monster-wrap .fe { width: 1em; height: 1em; vertical-align: bottom; }
+        .tab .ico .fe { width: 1.7rem; height: 1.7rem; vertical-align: middle; }
+
+        /* ===== 場景（純 CSS，不用 SVG） ===== */
+        .scene { position: relative; overflow: hidden; background: linear-gradient(180deg, var(--sky-a) 0%, var(--sky-b) 100%); }
+        .scene::before { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+            background:
+                radial-gradient(150px 150px at 90% -6%, rgba(255, 236, 150, .55), transparent 70%),
+                radial-gradient(34px 16px at 16% 9%, rgba(255,255,255,.95) 70%, transparent 72%),
+                radial-gradient(48px 20px at 23% 7%, rgba(255,255,255,.95) 70%, transparent 72%),
+                radial-gradient(30px 14px at 29% 10%, rgba(255,255,255,.95) 70%, transparent 72%),
+                radial-gradient(40px 16px at 72% 15%, rgba(255,255,255,.8) 70%, transparent 72%),
+                radial-gradient(54px 20px at 80% 13%, rgba(255,255,255,.8) 70%, transparent 72%);
+            animation: drift 18s ease-in-out infinite alternate; }
+        @keyframes drift { to { transform: translateX(22px); } }
+        .scene::after { content: ''; position: absolute; left: -15%; right: -15%; top: 250px; bottom: 0; pointer-events: none; z-index: 0;
+            border-radius: 50% 50% 0 0 / 70px 70px 0 0;
+            background: radial-gradient(ellipse 30% 26px at 50% 8px, rgba(0,0,0,.08), transparent 70%), linear-gradient(180deg, var(--ground) 0, var(--ground-d) 100%);
+            box-shadow: inset 0 6px 0 rgba(255,255,255,.35); }
+        .scene > * { position: relative; z-index: 1; }
+        .scene > .deco { position: absolute; }
+        .scene.dark #mon-bubble, .scene.dark .bubble { color: var(--ink); }
+        .trail { border-radius: 26px; background: radial-gradient(circle at 2px 2px, rgba(36,51,31,.07) 1.5px, transparent 0) 0 0 / 20px 20px, linear-gradient(180deg, var(--rt) 0%, rgba(255,255,255,0) 100%); }
+
+        /* ===== 競技場 ===== */
+        .battle-field { position: relative; height: 290px; border-radius: 22px; overflow: hidden; border: 2px solid var(--line);
+            background: radial-gradient(ellipse 60% 18% at 78% 47%, rgba(120,170,90,.45), transparent 70%),
+                        radial-gradient(ellipse 65% 18% at 25% 92%, rgba(120,170,90,.5), transparent 70%),
+                        linear-gradient(180deg, #bfe3ff 0%, #e6f6ff 45%, #d4efc4 46%, #bfe3a8 100%); }
+        .b-mon { position: absolute; font-size: 84px; line-height: 1; animation: bob 2.4s ease-in-out infinite; }
+        .b-mon.me { font-size: 96px; }
+        .b-mon.me > span { display: inline-block; transform: scaleX(-1); }
+        .b-mon.hit { animation: hitFlash .45s; }
+        @keyframes hitFlash { 0%, 100% { opacity: 1; } 20%, 60% { opacity: .2; transform: translateX(-6px); } 40%, 80% { opacity: 1; transform: translateX(6px); } }
+        .b-mon.lunge-me { animation: lungeMe .4s ease; }
+        @keyframes lungeMe { 50% { transform: translate(60px, -40px); } }
+        .b-mon.lunge-foe { animation: lungeFoe .4s ease; }
+        @keyframes lungeFoe { 50% { transform: translate(-60px, 40px); } }
+        .b-shadow { position: absolute; width: 90px; height: 14px; border-radius: 50%; background: rgba(36,51,31,.18); }
+        .hp-card { position: absolute; width: 46%; background: rgba(255,255,255,.92); border: 2px solid var(--line); border-radius: 14px; padding: 6px 10px; z-index: 2; }
+        .move { width: 100%; display: flex; align-items: center; gap: .7rem; padding: .7rem .9rem; border-radius: 16px; background: #fff; border: 2px solid var(--line); border-bottom-width: 5px; font-weight: 800; transition: transform .08s; }
+        .move:active:not(:disabled) { transform: translateY(2px); border-bottom-width: 3px; }
+        .move:disabled { opacity: .45; cursor: not-allowed; }
+
+        .badge { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: .55rem .2rem .45rem; border-radius: 16px; background: #f6f9f4; border: 2px solid var(--line); }
+        .badge.got { background: linear-gradient(180deg, #fffbea, #fff1c2); border-color: #f3d77b; box-shadow: 0 3px 0 #e8c75a; }
+        .badge .b-ico { font-size: 1.9rem; line-height: 1.1; }
+        .badge .b-name { font-size: .65rem; font-weight: 900; text-align: center; line-height: 1.2; }
+        .badge .b-bar { width: 80%; height: 4px; border-radius: 4px; background: #e3ebdf; overflow: hidden; margin-top: 2px; }
+        .badge .b-bar i { display: block; height: 100%; background: var(--gold); }
 
         .float-heart { position: absolute; bottom: 40%; font-size: 1.6rem; pointer-events: none; animation: floatUp 1.3s ease-out forwards; }
         @keyframes floatUp { 0% { transform: translateY(0) scale(.6); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(-110px) scale(1.2); opacity: 0; } }
@@ -349,12 +409,12 @@ const FOODS = [
 ];
 
 const BGS = [
-    { id: 'meadow', name: '青青草地', price: 0,   a: '#ffffff', b: '#e5f5df', deco: ['🌼', '🌿', '🌷', '🍀'] },
-    { id: 'beach',  name: '陽光海灘', price: 80,  a: '#fffbe8', b: '#bfe9f2', deco: ['🐚', '🌴', '🦀', '⛱️'] },
-    { id: 'candy',  name: '糖果屋',   price: 100, a: '#fff0f6', b: '#ffd6e7', deco: ['🍭', '🍬', '🧁', '🍩'] },
-    { id: 'snow',   name: '雪之國',   price: 120, a: '#f5fbff', b: '#d6ecff', deco: ['❄️', '⛄', '🎄', '✨'] },
-    { id: 'night',  name: '夢幻星空', price: 150, a: '#3b3f7a', b: '#6a55b5', deco: ['⭐', '🌙', '✨', '🪐'], dark: true },
-    { id: 'castle', name: '王者城堡', price: 200, a: '#f3f0ff', b: '#d0bfff', deco: ['🏰', '🚩', '💎', '🗡️'] }
+    { id: 'meadow', name: '青青草地', price: 0,   a: '#cdeeff', b: '#f4fbff', g: '#a9db8b', gd: '#7fc364', deco: ['🌼', '🌿', '🌷', '🍀'] },
+    { id: 'beach',  name: '陽光海灘', price: 80,  a: '#9fe0f5', b: '#e9f9ff', g: '#f6dfa4', gd: '#e9c578', deco: ['🐚', '🌴', '🦀', '⛱️'] },
+    { id: 'candy',  name: '糖果屋',   price: 100, a: '#ffd6e7', b: '#fff3f8', g: '#ffb3d1', gd: '#f58fb9', deco: ['🍭', '🍬', '🧁', '🍩'] },
+    { id: 'snow',   name: '雪之國',   price: 120, a: '#cfe6ff', b: '#f5fbff', g: '#ffffff', gd: '#dcecfb', deco: ['❄️', '⛄', '🎄', '✨'] },
+    { id: 'night',  name: '夢幻星空', price: 150, a: '#1f2257', b: '#5a4aa8', g: '#3d357f', gd: '#2a2462', deco: ['⭐', '🌙', '✨', '🪐'], dark: true },
+    { id: 'castle', name: '王者城堡', price: 200, a: '#d9ccff', b: '#f6f2ff', g: '#b9a6f2', gd: '#977fe0', deco: ['🏰', '🚩', '💎', '🗡️'] }
 ];
 
 const SHOP = [
@@ -383,6 +443,62 @@ const GAMES = [
     { id: 'memory', e: '🃏', name: '翻牌配對', desc: '把英文和中文配成一對', c: 'var(--purple)' },
     { id: 'quiz',   e: '⚡', name: '快問快答', desc: '6 題限時聽音辨字', c: 'var(--orange)' }
 ];
+
+// 成就：v = 目前數值、goal = 目標
+const st = k => S.stats?.[k] || 0;
+const dexCount = () => Object.keys(S.dex).length;
+const maxLv = () => Math.max(1, ...S.mons.map(m => levelInfo(m).lv));
+const ACHIEVEMENTS = [
+    { id: 'w1',    icon: '🌱', name: '初次捕捉',   desc: '收集第 1 個單字',          v: dexCount, goal: 1,   coins: 10 },
+    { id: 'w50',   icon: '📗', name: '小小收藏家', desc: '收集 50 個單字',           v: dexCount, goal: 50,  coins: 50 },
+    { id: 'w100',  icon: '📘', name: '百字達人',   desc: '收集 100 個單字',          v: dexCount, goal: 100, coins: 100 },
+    { id: 'w300',  icon: '📙', name: '單字博士',   desc: '收集 300 個單字',          v: dexCount, goal: 300, coins: 200 },
+    { id: 'w500',  icon: '🏛️', name: '行走的字典', desc: '收集 500 個單字',          v: dexCount, goal: 500, coins: 300 },
+    { id: 's3',    icon: '🔥', name: '三天不間斷', desc: '連續學習 3 天',            v: () => S.streak, goal: 3,  coins: 30 },
+    { id: 's7',    icon: '📅', name: '一週全勤',   desc: '連續學習 7 天',            v: () => S.streak, goal: 7,  coins: 80 },
+    { id: 's30',   icon: '🗓️', name: '月月不缺席', desc: '連續學習 30 天',           v: () => S.streak, goal: 30, coins: 300 },
+    { id: 'st10',  icon: '🗺️', name: '冒險新手',   desc: '完成 10 個關卡',           v: () => st('stages'), goal: 10, coins: 40 },
+    { id: 'st50',  icon: '🧭', name: '冒險老手',   desc: '完成 50 個關卡',           v: () => st('stages'), goal: 50, coins: 150 },
+    { id: 'pf10',  icon: '⭐', name: '完美主義',   desc: '拿到 10 次三星',           v: () => st('perfect'), goal: 10, coins: 80 },
+    { id: 'b1',    icon: '👊', name: '初戰告捷',   desc: '打敗第 1 隻魔王',          v: () => REGIONS.filter(r => S.progress[r.id]?.boss).length, goal: 1,  coins: 50 },
+    { id: 'b5',    icon: '🛡️', name: '魔王剋星',   desc: '打敗 5 隻魔王',            v: () => REGIONS.filter(r => S.progress[r.id]?.boss).length, goal: 5,  coins: 150 },
+    { id: 'b20',   icon: '👑', name: '單字之王',   desc: '打敗全部 20 隻魔王',       v: () => REGIONS.filter(r => S.progress[r.id]?.boss).length, goal: 20, coins: 1000 },
+    { id: 'cb10',  icon: '💥', name: '十連擊',     desc: '一次闖關連續答對 10 題',    v: () => st('maxCombo'), goal: 10, coins: 50 },
+    { id: 'm2',    icon: '🐣', name: '新家人',     desc: '孵化第 1 顆蛋',            v: () => st('hatched'), goal: 1, coins: 30 },
+    { id: 'm5',    icon: '🏡', name: '熱鬧牧場',   desc: '擁有 5 隻怪獸',            v: () => S.mons.length, goal: 5, coins: 100 },
+    { id: 'sp8',   icon: '🌈', name: '種族大師',   desc: '發現全部 8 個種族',         v: () => new Set([...S.seen, ...S.mons.map(m => m.species)]).size, goal: 8, coins: 300 },
+    { id: 'shiny', icon: '✨', name: '閃閃發光',   desc: '擁有閃光色怪獸',           v: () => S.mons.filter(m => m.shiny).length, goal: 1, coins: 100 },
+    { id: 'evo',   icon: '🐉', name: '終極進化',   desc: '讓一隻怪獸到 Lv.10',       v: maxLv, goal: 10, coins: 200 },
+    { id: 'love',  icon: '💞', name: '心有靈犀',   desc: '親密度達到 100',           v: () => Math.max(0, ...S.mons.map(m => m.affection)), goal: 100, coins: 100 },
+    { id: 'pet',   icon: '🤚', name: '撫摸專家',   desc: '摸摸怪獸 100 次',          v: () => st('pets'), goal: 100, coins: 50 },
+    { id: 'feed',  icon: '🍎', name: '大廚',       desc: '餵食 50 次',               v: () => st('feeds'), goal: 50, coins: 50 },
+    { id: 'game',  icon: '🎮', name: '玩樂高手',   desc: '玩小遊戲 20 次',           v: () => st('games'), goal: 20, coins: 60 },
+    { id: 'catch', icon: '🧺', name: '神接手',     desc: '接住單字拿到 150 分',       v: () => S.best?.catch || 0, goal: 150, coins: 80 },
+    { id: 'win1',  icon: '⚔️', name: '首場勝利',   desc: '在競技場贏 1 場',          v: () => S.arena.wins, goal: 1,  coins: 30 },
+    { id: 'win10', icon: '🏆', name: '競技場常勝', desc: '在競技場贏 10 場',         v: () => S.arena.wins, goal: 10, coins: 120 },
+    { id: 'champ', icon: '🥇', name: '冠軍訓練家', desc: '打敗競技場所有對手',       v: () => S.arena.rank, goal: 10, coins: 500 },
+    { id: 'rev',   icon: '💪', name: '溫故知新',   desc: '複習答對 100 題',          v: () => st('reviews'), goal: 100, coins: 80 },
+    { id: 'fix',   icon: '🩹', name: '知錯能改',   desc: '讓 20 個錯題畢業',         v: () => st('fixed'), goal: 20, coins: 100 },
+    { id: 'chat',  icon: '💬', name: '健談',       desc: '和 AI 聊 50 句',           v: () => st('chats'), goal: 50, coins: 80 },
+    { id: 'mic',   icon: '🎤', name: '開口說',     desc: '用語音作答或聊天 10 次',    v: () => st('voice'), goal: 10, coins: 50 },
+    { id: 'gram',  icon: '🏯', name: '文法道館主', desc: '文法道館全對 5 次',         v: () => st('grammarPerfect'), goal: 5, coins: 100 },
+    { id: 'cmp',   icon: '🧩', name: '組合大師',   desc: '收集 20 個複合字',         v: () => regionWords(WORKSHOP.id).length, goal: 20, coins: 80 },
+    { id: 'rich',  icon: '💰', name: '小富翁',     desc: '同時擁有 1000 金幣',        v: () => S.coins, goal: 1000, coins: 0 }
+];
+function bumpStat(k, n = 1) { S.stats[k] = (S.stats[k] || 0) + n; }
+function checkAchievements() {
+    if (!S.mons?.length) return;
+    for (const a of ACHIEVEMENTS) {
+        if (S.ach[a.id]) continue;
+        let v = 0;
+        try { v = a.v(); } catch {}
+        if (v >= a.goal) {
+            S.ach[a.id] = Date.now();
+            S.coins += a.coins;
+            setTimeout(() => { toast(`🏅 成就解鎖：${a.icon} ${a.name}${a.coins ? `（🪙 +${a.coins}）` : ''}`, 'gold', 3500); playSound('coin'); }, 400);
+        }
+    }
+}
 
 const QUESTS = [
     { id: 'caught',  text: '捕捉 8 個新單字',   target: 8,  reward: 30, icon: '🎯' },
@@ -455,6 +571,81 @@ function dateStr(d = new Date()) { return `${d.getFullYear()}-${String(d.getMont
 function yesterday() { const d = new Date(); d.setDate(d.getDate() - 1); return dateStr(d); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const isFinePointer = () => window.matchMedia('(pointer: fine)').matches;
+// 只在使用者點過畫面後才震動，避免瀏覽器擋下並報錯
+const buzz = ms => { if (navigator.vibrate && navigator.userActivation?.hasBeenActive !== false) navigator.vibrate(ms); };
+
+const FLUENT = {"⏰":"Alarm clock|alarm_clock","⏱":"Stopwatch|stopwatch","☁️":"Cloud|cloud","☕":"Hot beverage|hot_beverage","♨️":"Hot springs|hot_springs","⚔️":"Crossed swords|crossed_swords","⚖️":"Balance scale|balance_scale","⚙️":"Gear|gear","⚠️":"Warning|warning","⚡":"High voltage|high_voltage","⚾":"Baseball|baseball","⛄":"Snowman without snow|snowman_without_snow","⛰️":"Mountain|mountain","⛱️":"Umbrella on ground|umbrella_on_ground","✈️":"Airplane|airplane","✏️":"Pencil|pencil","✨":"Sparkles|sparkles","❄️":"Snowflake|snowflake","❌":"Cross mark|cross_mark","❓":"Red question mark|red_question_mark","❤️":"Red heart|red_heart","⬆️":"Up arrow|up_arrow","⬇️":"Down arrow|down_arrow","⬜":"White large square|white_large_square","⭐":"Star|star","🃏":"Joker|joker","🌈":"Rainbow|rainbow","🌋":"Volcano|volcano","🌙":"Crescent moon|crescent_moon","🌪️":"Tornado|tornado","🌱":"Seedling|seedling","🌲":"Evergreen tree|evergreen_tree","🌳":"Deciduous tree|deciduous_tree","🌴":"Palm tree|palm_tree","🌷":"Tulip|tulip","🌸":"Cherry blossom|cherry_blossom","🌼":"Blossom|blossom","🌾":"Sheaf of rice|sheaf_of_rice","🌿":"Herb|herb","🍀":"Four leaf clover|four_leaf_clover","🍃":"Leaf fluttering in wind|leaf_fluttering_in_wind","🍄":"Mushroom|mushroom","🍎":"Red apple|red_apple","🍖":"Meat on bone|meat_on_bone","🍩":"Doughnut|doughnut","🍬":"Candy|candy","🍭":"Lollipop|lollipop","🍰":"Shortcake|shortcake","🍽️":"Fork and knife|fork_and_knife","🎀":"Ribbon|ribbon","🎃":"Jack-o-lantern|jack-o-lantern","🎄":"Christmas tree|christmas_tree","🎉":"Party popper|party_popper","🎓":"Graduation cap|graduation_cap","🎤":"Microphone|microphone","🎧":"Headphone|headphone","🎨":"Artist palette|artist_palette","🎩":"Top hat|top_hat","🎫":"Ticket|ticket","🎬":"Clapper board|clapper_board","🎮":"Video game|video_game","🎵":"Musical note|musical_note","🏅":"Sports medal|sports_medal","🏆":"Trophy|trophy","🏋️":"!Person lifting weights|person_lifting_weights","🏔️":"Snow-capped mountain|snow-capped_mountain","🏖️":"Beach with umbrella|beach_with_umbrella","🏙️":"Cityscape|cityscape","🏛️":"Classical building|classical_building","🏡":"House with garden|house_with_garden","🏥":"Hospital|hospital","🏦":"Bank|bank","🏨":"Hotel|hotel","🏯":"Japanese castle|japanese_castle","🐇":"Rabbit|rabbit","🐈":"Cat|cat","🐉":"Dragon|dragon","🐊":"Crocodile|crocodile","🐌":"Snail|snail","🐗":"Boar|boar","🐙":"Octopus|octopus","🐚":"Spiral shell|spiral_shell","🐛":"Bug|bug","🐞":"Lady beetle|lady_beetle","🐟":"Fish|fish","🐢":"Turtle|turtle","🐣":"Hatching chick|hatching_chick","🐦":"Bird|bird","🐧":"Penguin|penguin","🐬":"Dolphin|dolphin","🐭":"Mouse face|mouse_face","🐰":"Rabbit face|rabbit_face","🐱":"Cat face|cat_face","🐲":"Dragon face|dragon_face","🐳":"Spouting whale|spouting_whale","🐺":"Wolf|wolf","🐻":"Bear|bear","🐾":"Paw prints|paw_prints","👀":"Eyes|eyes","👂":"!Ear|ear","👉":"!Backhand index pointing right|backhand_index_pointing_right","👊":"!Oncoming fist|oncoming_fist","👋":"!Waving hand|waving_hand","👑":"Crown|crown","👓":"Glasses|glasses","👕":"T-shirt|t-shirt","👗":"Dress|dress","👻":"Ghost|ghost","👾":"Alien monster|alien_monster","💇":"!Person getting haircut|person_getting_haircut","💎":"Gem stone|gem_stone","💕":"Two hearts|two_hearts","💗":"Growing heart|growing_heart","💚":"Green heart|green_heart","💞":"Revolving hearts|revolving_hearts","💤":"Zzz|zzz","💥":"Collision|collision","💦":"Sweat droplets|sweat_droplets","💧":"Droplet|droplet","💪":"!Flexed biceps|flexed_biceps","💫":"Dizzy|dizzy","💬":"Speech balloon|speech_balloon","💭":"Thought balloon|thought_balloon","💰":"Money bag|money_bag","💼":"Briefcase|briefcase","📅":"Calendar|calendar","📍":"Round pushpin|round_pushpin","📏":"Straight ruler|straight_ruler","📒":"Ledger|ledger","📓":"Notebook|notebook","📔":"Notebook with decorative cover|notebook_with_decorative_cover","📕":"Closed book|closed_book","📖":"Open book|open_book","📗":"Green book|green_book","📘":"Blue book|blue_book","📙":"Orange book|orange_book","📚":"Books|books","📞":"Telephone receiver|telephone_receiver","📮":"Postbox|postbox","📱":"Mobile phone|mobile_phone","🔁":"Repeat button|repeat_button","🔄":"Counterclockwise arrows button|counterclockwise_arrows_button","🔊":"Speaker high volume|speaker_high_volume","🔑":"Key|key","🔔":"Bell|bell","🔥":"Fire|fire","🔧":"Wrench|wrench","🔬":"Microscope|microscope","🕶️":"Sunglasses|sunglasses","🕸️":"Spider web|spider_web","🖼️":"Framed picture|framed_picture","🗂️":"Card index dividers|card_index_dividers","🗑️":"Wastebasket|wastebasket","🗓️":"Spiral calendar|spiral_calendar","🗡️":"Dagger|dagger","🗣️":"Speaking head|speaking_head","🗺️":"World map|world_map","😊":"Smiling face with smiling eyes|smiling_face_with_smiling_eyes","😢":"Crying face|crying_face","😣":"Persevering face|persevering_face","😵‍💫":"Face with spiral eyes|face_with_spiral_eyes","🚆":"Train|train","🚕":"Taxi|taxi","🛍️":"Shopping bags|shopping_bags","🛡️":"Shield|shield","🟩":"Green square|green_square","🤍":"White heart|white_heart","🤖":"Robot|robot","🤚":"!Raised back of hand|raised_back_of_hand","🤡":"Clown face|clown_face","🥇":"1st place medal|1st_place_medal","🥚":"Egg|egg","🥦":"Broccoli|broccoli","🦀":"Crab|crab","🦁":"Lion|lion","🦄":"Unicorn|unicorn","🦅":"Eagle|eagle","🦈":"Shark|shark","🦉":"Owl|owl","🦊":"Fox|fox","🦋":"Butterfly|butterfly","🦎":"Lizard|lizard","🦑":"Squid|squid","🦕":"Sauropod|sauropod","🦖":"T-rex|t-rex","🦚":"Peacock|peacock","🦜":"Parrot|parrot","🦝":"Raccoon|raccoon","🦠":"Microbe|microbe","🦩":"Flamingo|flamingo","🧁":"Birthday cake|birthday_cake","🧢":"Billed cap|billed_cap","🧣":"Scarf|scarf","🧩":"Puzzle piece|puzzle_piece","🧭":"Compass|compass","🧺":"Basket|basket","🩹":"Adhesive bandage|adhesive_bandage","🪐":"Ringed planet|ringed_planet","🪙":"Coin|coin","🪨":"Rock|rock","🫧":"Bubbles|bubbles","🅰️":"A button blood type|a_button_blood_type","🎯":"Bullseye|bullseye","🎾":"Tennis|tennis","🏠":"House|house","🏰":"Castle|castle","💡":"Light bulb|light_bulb","🔍":"Magnifying glass tilted left|magnifying_glass_tilted_left","🔒":"Locked|locked","🔓":"Unlocked|unlocked","😋":"Face savoring food|face_savoring_food","😵":"Knocked-out face|knocked-out_face","🚩":"Triangular flag|triangular_flag","🛒":"Shopping cart|shopping_cart","🥺":"Pleading face|pleading_face"};
+
+// ============================================================
+// 美術：把 emoji 換成 Microsoft Fluent Emoji 3D 圖示（MIT 授權，PNG）
+// 載入失敗時自動退回原本的 emoji 文字
+// ============================================================
+const FLUENT_CDN = 'https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/';
+function fluentUrl(e) {
+    const v = FLUENT[e] || FLUENT[e + '️'] || FLUENT[e.replace(/️/g, '')];
+    if (!v) return null;
+    const skin = v[0] === '!';
+    const [folder, slug] = (skin ? v.slice(1) : v).split('|');
+    return `${FLUENT_CDN}${encodeURIComponent(folder)}/${skin ? 'Default/' : ''}3D/${slug}_3d${skin ? '_default' : ''}.png`;
+}
+const FLUENT_RE = new RegExp('(' + Object.keys(FLUENT)
+    .flatMap(k => [k, k.replace(/️/g, '')])
+    .filter((k, i, a) => k && a.indexOf(k) === i)
+    .sort((a, b) => b.length - a.length)
+    .map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\uFE0F?')
+    .join('|') + ')', 'gu');
+const FLUENT_TEST = new RegExp(FLUENT_RE.source, 'u');
+const FLUENT_SKIP = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'OPTION', 'SELECT', 'TITLE', 'NOSCRIPT']);
+let fluentOn = true;
+
+function fluentImg(e) {
+    const img = document.createElement('img');
+    img.className = 'fe';
+    img.alt = e;
+    img.draggable = false;
+    img.decoding = 'async';
+    img.src = fluentUrl(e);
+    img.onerror = () => img.replaceWith(document.createTextNode(e));
+    return img;
+}
+
+function fluentify(root) {
+    if (!fluentOn || !root) return;
+    if (root.nodeType === 3) { fluentText(root); return; }
+    if (root.nodeType !== 1 || FLUENT_SKIP.has(root.nodeName) || root.closest?.('.no-fe')) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode: n => (n.parentElement && !FLUENT_SKIP.has(n.parentElement.nodeName) && !n.parentElement.closest('.no-fe') && FLUENT_TEST.test(n.data)) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+    });
+    const list = [];
+    while (walker.nextNode()) list.push(walker.currentNode);
+    list.forEach(fluentText);
+}
+
+function fluentText(node) {
+    const p = node.parentElement;
+    if (!p || FLUENT_SKIP.has(p.nodeName) || p.closest('.no-fe')) return;
+    const text = node.data;
+    if (!FLUENT_TEST.test(text)) return;
+    FLUENT_RE.lastIndex = 0;
+    const frag = document.createDocumentFragment();
+    let last = 0, m;
+    while ((m = FLUENT_RE.exec(text))) {
+        if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+        frag.appendChild(fluentUrl(m[0]) ? fluentImg(m[0]) : document.createTextNode(m[0]));
+        last = m.index + m[0].length;
+    }
+    if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+    node.replaceWith(frag);
+}
+
+new MutationObserver(muts => {
+    if (!fluentOn) return;
+    for (const mu of muts) {
+        if (mu.type === 'characterData') fluentText(mu.target);
+        else mu.addedNodes.forEach(n => { if (n.nodeType === 1 && n.classList?.contains('fe')) return; fluentify(n); });
+    }
+}).observe(document.body, { childList: true, subtree: true, characterData: true });
+fluentify(document.body);
 
 function toast(msg, type = 'info', ms = 2600) {
     const color = { info: ['#fff', 'var(--ink)'], good: ['#d7f2cf', 'var(--green-d)'], bad: ['#fbdcdc', 'var(--red-d)'], gold: ['#fff1c2', '#8a6500'] }[type];
@@ -478,6 +669,7 @@ function defaultState() {
         progress: {}, dex: {},
         daily: { date: dateStr(), caught: 0, stages: 0, reviews: 0, claimed: [] },
         totals: { correct: 0, answered: 0 },
+        stats: {}, ach: {}, arena: { rank: 0, wins: 0, losses: 0, trophies: 0 },
         legacy: []
     };
 }
@@ -497,7 +689,8 @@ function migrate(saved) {
     const base = defaultState();
     if (!saved || typeof saved !== 'object') return null;
     if (saved.v === 3) {
-        return { ...base, ...saved, foods: { ...base.foods, ...saved.foods }, daily: { ...base.daily, ...saved.daily }, totals: { ...base.totals, ...saved.totals } };
+        return { ...base, ...saved, foods: { ...base.foods, ...saved.foods }, daily: { ...base.daily, ...saved.daily }, totals: { ...base.totals, ...saved.totals },
+            stats: { ...saved.stats }, ach: { ...saved.ach }, arena: { ...base.arena, ...saved.arena } };
     }
     if (saved.v === 2) {
         const m = saved.monster || {};
@@ -529,7 +722,7 @@ let apiKey = safeGet(KEY_STORE) || '';
 let model = safeGet(MODEL_STORE) || DEFAULT_MODEL;
 const G = { tab: 'home', mapRegion: null, dexRegion: 'all', dexQuery: '', dexMode: 'words', shopTab: 'food', play: null, modalQueue: [], modalOpen: false, prefetch: {}, chat: { scenario: CHAT_SCENARIOS[0], history: [], busy: false, started: false } };
 
-function save() { safeSet(STORE_KEY, JSON.stringify(S)); renderTop(); }
+function save() { checkAchievements(); safeSet(STORE_KEY, JSON.stringify(S)); renderTop(); }
 
 function ensureDaily() {
     if (S.daily.date !== dateStr()) S.daily = { date: dateStr(), caught: 0, stages: 0, reviews: 0, claimed: [] };
@@ -756,7 +949,7 @@ function petMon() {
     if (wrap?.classList.contains('sleeping')) { pokeMonster(wrap); return; }
     doAct(wrap, 'wiggle');
     if (m.pets < 5) {
-        m.pets++;
+        m.pets++; bumpStat('pets');
         cheer(10);
         addAffection(m.trait === 'clingy' ? 2 : 1);
         floatHearts('💗');
@@ -776,7 +969,7 @@ function feedItem(id) {
     if (!m || !f) return;
     if ((S.foods[id] || 0) <= 0) { playSound('wrong'); return toast(f.price ? `沒有${f.name}了，可以去商店買` : '沒有蘋果了，去冒險抓單字就能拿到', 'bad'); }
     if (satiety(m) >= 100 && f.food >= 10) return toast(`${m.name} 已經吃不下了～`);
-    S.foods[id]--;
+    S.foods[id]--; bumpStat('feeds');
     const k = m.trait === 'glutton' ? 1.5 : 1;
     feed(Math.round(f.food * k));
     cheer(Math.round(f.mood * k));
@@ -883,7 +1076,7 @@ function hatchEgg(id) {
     function revealHatch() {
         S.eggs.splice(i, 1);
         const m = newMon(egg.species);
-        S.mons.push(m);
+        S.mons.push(m); bumpStat('hatched');
         const isNew = !S.seen.includes(sp.id);
         if (isNew) S.seen.push(sp.id);
         save();
@@ -905,7 +1098,7 @@ function crackEgg() {
     if (!egg || G.hatchTaps >= 3) return;
     G.hatchTaps++;
     playSound(G.hatchTaps < 3 ? 'tap' : 'pop');
-    if (navigator.vibrate) navigator.vibrate(40 * G.hatchTaps);
+    buzz(40 * G.hatchTaps);
     egg.style.animation = `wiggle ${0.35 - G.hatchTaps * 0.08}s ease-in-out infinite`;
     $('crack').textContent = ['', '⚡', '⚡💥', '💥💥'][G.hatchTaps];
     $('hatch-tip').textContent = G.hatchTaps < 3 ? `再點 ${3 - G.hatchTaps} 下！` : '要出來了！';
@@ -1146,7 +1339,24 @@ function stageUnlocked(r, idx) { const p = prog(r.id); return idx === 0 || p.sta
 function bossUnlocked(r) { return prog(r.id).stars[STAGES_PER_REGION - 1] > 0; }
 function currentRegionIndex() { let i = 0; while (i + 1 < REGIONS.length && regionUnlocked(i + 1)) i++; return i; }
 function regionWords(id) { return Object.values(S.dex).filter(d => d.region === id); }
-function mastery(d) { return Math.max(0, Math.min(3, Math.floor((d.correct - d.wrong * 0.5) / 2))); }
+// ---------- 間隔複習（Leitner 盒子）----------
+const DAY = 86400000;
+const SRS_DAYS = [0, 1, 3, 7, 14, 30];   // 第 n 盒答對後隔幾天再出現
+function srsInit(d) { if (d.box == null) { d.box = 1; d.due = (d.caught || Date.now()) + DAY; } return d; }
+function srsHit(d, ok) {
+    if (!d) return;
+    srsInit(d);
+    const now = Date.now();
+    if (ok) {
+        if (d.due <= now) { d.box = Math.min(5, d.box + 1); d.due = now + SRS_DAYS[d.box] * DAY; }
+        if (d.lastWrong && d.box >= 3 && !d.fixed) { d.fixed = true; S.stats.fixed = (S.stats.fixed || 0) + 1; }
+    } else {
+        d.box = 1; d.due = now; d.lastWrong = now; d.fixed = false;
+    }
+}
+function dueWords() { const now = Date.now(); return Object.values(S.dex).map(srsInit).filter(d => d.due <= now); }
+function wrongWords() { return Object.values(S.dex).filter(d => d.lastWrong && !d.fixed).sort((a, b) => b.lastWrong - a.lastWrong); }
+function mastery(d) { srsInit(d); return Math.max(0, Math.min(3, d.box - 1)); }
 
 // ============================================================
 // 導航與畫面
@@ -1211,7 +1421,7 @@ function renderHome() {
     const decoPos = [[6, 10], [84, 14], [10, 62], [86, 58]];
 
     $('tab-home').innerHTML = `
-    <div class="card p-5 mt-1 anim-in relative overflow-hidden" style="background: linear-gradient(180deg, ${bg.a} 0%, ${bg.b} 100%)">
+    <div class="card p-5 mt-1 anim-in scene ${bg.dark ? 'dark' : ''}" style="--sky-a:${bg.a};--sky-b:${bg.b};--ground:${bg.g};--ground-d:${bg.gd}">
         ${bg.deco.map((d, i) => `<span class="deco" style="left:${decoPos[i][0]}%;top:${decoPos[i][1]}%">${d}</span>`).join('')}
         <div class="flex justify-center mb-3 relative"><div id="mon-bubble" class="bubble text-center max-w-[260px]">${esc(isSleeping() ? 'Zzz…（夜深了，牠睡著了。點一下可以叫醒）' : monsterSay())}</div></div>
         <div id="mon-stage" class="py-2 relative select-none" style="touch-action:pan-y">${isSleeping() ? monsterHTML(130).replace('class="monster-wrap"', 'class="monster-wrap sleeping"') + '<span class="zzz">💤</span><span class="zzz">💤</span>' : monsterHTML(130)}</div>
@@ -1241,10 +1451,27 @@ function renderHome() {
         <p class="text-xs mt-2" style="color:var(--muted)">蛋會在你答對題目時慢慢孵化（每顆 ${EGG_NEED} 題）。打敗魔王必掉一顆蛋！</p>
     </div>
 
-    <div class="grid grid-cols-3 gap-3 mt-4">
-        <button class="card p-3 text-center" onclick="switchTab('dex')"><div class="text-2xl">📖</div><div class="text-lg font-black">${caught}</div><div class="text-xs" style="color:var(--muted)">已收集</div></button>
-        <button class="card p-3 text-center" onclick="startReview()"><div class="text-2xl">💪</div><div class="text-sm font-black mt-1">訓練場</div><div class="text-xs" style="color:var(--muted)">複習不花錢</div></button>
-        <button class="card p-3 text-center" onclick="openShop()"><div class="text-2xl">🛍️</div><div class="text-sm font-black mt-1">商店</div><div class="text-xs" style="color:var(--muted)">🪙 ${S.coins}</div></button>
+    ${(() => {
+        const due = caught ? dueWords().length : 0, wrong = wrongWords().length;
+        if (!due && !wrong) return '';
+        return `<div class="card p-4 mt-4 flex items-center gap-3" style="background:var(--purple-t);border-color:#d6ccfa">
+            <div class="text-4xl">📚</div>
+            <div class="flex-1 min-w-0">
+                <div class="font-black">${due ? `今天有 ${due} 個單字該複習了` : '錯題本還有單字沒練熟'}</div>
+                <div class="text-xs mt-0.5" style="color:var(--muted)">依遺忘曲線安排 1・3・7・14・30 天後再複習${wrong ? `・❌ 錯題 ${wrong} 個` : ''}</div>
+            </div>
+            <div class="flex flex-col gap-1.5">
+                ${due ? `<button class="btn sm purple" onclick="startReview('due')">開始複習</button>` : ''}
+                ${wrong ? `<button class="btn sm white" onclick="startReview('wrong')">練錯題</button>` : ''}
+            </div>
+        </div>`;
+    })()}
+
+    <div class="grid grid-cols-4 gap-2 mt-4">
+        <button class="card p-2.5 text-center" onclick="switchTab('dex')"><div class="text-2xl">📖</div><div class="text-sm font-black">${caught}</div><div class="text-[11px]" style="color:var(--muted)">圖鑑</div></button>
+        <button class="card p-2.5 text-center" onclick="startReview()"><div class="text-2xl">💪</div><div class="text-sm font-black">訓練</div><div class="text-[11px]" style="color:var(--muted)">不花錢</div></button>
+        <button class="card p-2.5 text-center" onclick="openArena()"><div class="text-2xl">⚔️</div><div class="text-sm font-black">競技場</div><div class="text-[11px]" style="color:var(--muted)">🏆 ${S.arena.trophies}</div></button>
+        <button class="card p-2.5 text-center" onclick="openShop()"><div class="text-2xl">🛍️</div><div class="text-sm font-black">商店</div><div class="text-[11px]" style="color:var(--muted)">🪙 ${S.coins}</div></button>
     </div>
 
     <div class="card p-4 mt-4">
@@ -1329,7 +1556,7 @@ function renderMap() {
             <div class="text-right"><div class="font-black">⭐ ${totalStars}/${STAGES_PER_REGION * 3}</div><div class="text-xs" style="color:var(--muted)">📖 ${regionWords(r.id).length} 個</div></div>
         </div>
     </div>
-    <div class="relative pt-12 pb-6 overflow-hidden">${nodes}${bossNode}</div>
+    <div class="relative pt-12 pb-6 mt-3 overflow-hidden trail" style="--rt:${r.t}">${nodes}${bossNode}</div>
     ${p.boss && ri + 1 < REGIONS.length ? `<button class="btn w-full mb-3" style="--c:${REGIONS[ri + 1].c};--cd:${REGIONS[ri + 1].cd}" onclick="selectRegion('${REGIONS[ri + 1].id}', ${ri + 1})">前往下一區：${REGIONS[ri + 1].emoji} ${REGIONS[ri + 1].name} →</button>` : ''}
     <button class="card p-4 mt-2 w-full text-left flex items-center gap-3" style="background:${WORKSHOP.t};border-color:${WORKSHOP.c}44" onclick="startWorkshop()">
         <div class="text-4xl">🧩</div>
@@ -1378,6 +1605,8 @@ function renderDex() {
     <input class="field mb-3" placeholder="搜尋英文或中文…" value="${esc(G.dexQuery)}" oninput="G.dexQuery=this.value; renderDexList()">
     <div class="flex gap-2 overflow-x-auto noscroll -mx-4 px-4 pb-3">
         <button class="chip ${G.dexRegion === 'all' ? 'active' : ''}" onclick="G.dexRegion='all'; renderDex()">全部 ${all.length}</button>
+        ${wrongWords().length ? `<button class="chip ${G.dexRegion === 'wrong' ? 'active' : ''}" style="${G.dexRegion === 'wrong' ? '' : 'color:var(--red-d);border-color:#f5c2c2'}" onclick="G.dexRegion='wrong'; renderDex()">❌ 錯題本 ${wrongWords().length}</button>` : ''}
+        ${dueWords().length ? `<button class="chip ${G.dexRegion === 'due' ? 'active' : ''}" onclick="G.dexRegion='due'; renderDex()">⏰ 待複習 ${dueWords().length}</button>` : ''}
         ${[...REGIONS, WORKSHOP].filter(r => regionWords(r.id).length).map(r => `<button class="chip ${G.dexRegion === r.id ? 'active' : ''}" onclick="G.dexRegion='${r.id}'; renderDex()">${r.emoji} ${regionWords(r.id).length}</button>`).join('')}
     </div>
     <div id="dex-list"></div>`;
@@ -1386,23 +1615,26 @@ function renderDex() {
 
 function renderDexList() {
     const all = Object.values(S.dex);
-    let list = G.dexRegion === 'all' ? all : all.filter(d => d.region === G.dexRegion);
+    let list = G.dexRegion === 'all' ? all : G.dexRegion === 'wrong' ? wrongWords() : G.dexRegion === 'due' ? dueWords() : all.filter(d => d.region === G.dexRegion);
     const q = G.dexQuery.trim().toLowerCase();
     if (q) list = list.filter(d => d.word.toLowerCase().includes(q) || String(d.mean).includes(q));
-    list.sort((a, b) => b.caught - a.caught);
+    if (G.dexRegion !== 'wrong') list.sort((a, b) => b.caught - a.caught);
     const rc = ['', '#9aa595', '#3b9ae1', '#a855f7'];
     const el = $('dex-list');
     if (!el) return;
+    const head = G.dexRegion === 'wrong' && list.length ? `<div class="card p-3 mb-3 flex items-center gap-3" style="background:var(--red-t);border-color:#f5c2c2"><div class="flex-1 text-sm"><b>❌ 錯題本</b><div class="text-xs" style="color:var(--muted)">答錯過的單字會留在這裡，複習答對到熟練度 2 格就會畢業</div></div><button class="btn sm red" onclick="startReview('wrong')">練錯題</button></div>`
+        : G.dexRegion === 'due' && list.length ? `<div class="card p-3 mb-3 flex items-center gap-3" style="background:var(--purple-t);border-color:#d6ccfa"><div class="flex-1 text-sm"><b>⏰ 今天該複習</b><div class="text-xs" style="color:var(--muted)">依遺忘曲線排程，準時複習記得最牢</div></div><button class="btn sm purple" onclick="startReview('due')">開始複習</button></div>` : '';
     if (!all.length) {
         el.innerHTML = `<div class="card p-8 text-center"><div class="text-5xl mb-2">🕸️</div><div class="font-black text-lg">圖鑑還是空的</div><p class="text-sm mt-1 mb-4" style="color:var(--muted)">到冒險地圖抓到的單字都會收進這裡</p><button class="btn" onclick="goAdventure()">去抓第一個單字</button></div>`;
         return;
     }
     if (!list.length) { el.innerHTML = '<p class="text-center py-8" style="color:var(--muted)">找不到符合的單字</p>'; return; }
-    el.innerHTML = `<div class="grid grid-cols-2 gap-3">${list.map(d => {
+    el.innerHTML = head + `<div class="grid grid-cols-2 gap-3">${list.map(d => {
         const r = regionMeta(d.region);
         const m = mastery(d);
+        const dueIn = Math.ceil((d.due - Date.now()) / DAY);
         return `<button class="card p-3 text-left relative" style="border-color:${rc[d.rarity]}55" onclick="openWord('${esc(d.word.toLowerCase())}')">
-            <div class="flex items-center justify-between text-xs"><span>${r.emoji}</span><span style="color:${rc[d.rarity]}">${'★'.repeat(d.rarity)}</span></div>
+            <div class="flex items-center justify-between text-xs"><span>${r.emoji}${d.lastWrong && !d.fixed ? ' <span style="color:var(--red-d)">❌</span>' : ''}</span><span style="color:${dueIn <= 0 ? 'var(--purple-d)' : 'var(--muted)'}">${dueIn <= 0 ? '⏰ 該複習' : `${dueIn} 天後`}</span></div>
             <div class="text-lg font-black mt-1 break-words">${esc(d.word)}</div>
             <div class="text-sm truncate" style="color:var(--muted)">${esc(d.mean)}</div>
             <div class="flex gap-1 mt-2">${[0, 1, 2].map(i => `<span class="h-1.5 flex-1 rounded-full" style="background:${i < m ? 'var(--green)' : '#e3ebdf'}"></span>`).join('')}</div>
@@ -1444,6 +1676,21 @@ function renderMe() {
             .map(([i, v, l]) => `<div class="card p-3 text-center"><div class="text-2xl">${i}</div><div class="text-xl font-black">${v}</div><div class="text-xs" style="color:var(--muted)">${l}</div></div>`).join('')}
     </div>
 
+    <div class="card p-4 mt-4">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="font-black text-lg">🏅 成就徽章</h3>
+            <span class="pill" style="background:#fff1c2;color:#8a6500">${Object.keys(S.ach).length} / ${ACHIEVEMENTS.length}</span>
+        </div>
+        <div class="grid grid-cols-4 sm:grid-cols-5 gap-2">${ACHIEVEMENTS.map(a => {
+            const got = S.ach[a.id];
+            let v = 0; try { v = a.v(); } catch {}
+            return `<button class="badge ${got ? 'got' : ''}" onclick="showBadge('${a.id}')" aria-label="${esc(a.name)}">
+                <span class="b-ico" style="${got ? '' : 'filter:grayscale(1);opacity:.35'}">${a.icon}</span>
+                <span class="b-name">${got ? a.name : '???'}</span>
+                ${got ? '' : `<span class="b-bar"><i style="width:${Math.min(100, v / a.goal * 100)}%"></i></span>`}
+            </button>`; }).join('')}</div>
+    </div>
+
     <div class="card p-4 mt-4 space-y-4">
         <div>
             <label class="text-sm font-black block mb-1.5">📚 單字難度</label>
@@ -1463,6 +1710,17 @@ function renderMe() {
         </label>
     </div>
 
+    ${isStandalone() ? '' : `<div class="card p-4 mt-4" style="background:var(--blue-t);border-color:#b9d7f0">
+        <div class="flex items-center gap-3">
+            <img src="icons/icon-192.png" alt="" class="w-12 h-12 rounded-xl">
+            <div class="flex-1"><div class="text-sm font-black">📲 安裝到手機主畫面</div>
+                <div class="text-xs mt-0.5" style="color:var(--muted)">${G.installEvt ? '像 App 一樣全螢幕開啟，沒網路也能玩訓練場和小遊戲'
+                    : /iphone|ipad|ipod/i.test(navigator.userAgent) ? 'Safari 點下方「分享」→「加入主畫面」'
+                    : '用 Chrome 或 Edge 開啟網址後，選單裡選「安裝應用程式」'}</div></div>
+            ${G.installEvt ? '<button class="btn sm blue" onclick="installApp()">安裝</button>' : ''}
+        </div>
+    </div>`}
+
     <div class="card p-4 mt-4">
         <div class="flex items-center justify-between">
             <div><div class="text-sm font-black">🤖 Claude API</div><div class="text-xs mt-0.5" style="color:var(--muted)">${apiKey ? `已設定 · ${esc(model)}` : '尚未設定 API Key'}</div></div>
@@ -1480,6 +1738,22 @@ function renderMe() {
         <button class="btn red sm w-full mt-2" onclick="resetAll()">🗑️ 重置全部進度</button>
     </div>
     <p class="text-center text-xs mt-6" style="color:var(--muted)">鍵盤：1–4 作答 · Enter 繼續 · R 重播發音</p>`;
+}
+
+function showBadge(id) {
+    const a = ACHIEVEMENTS.find(x => x.id === id);
+    if (!a) return;
+    const got = S.ach[id];
+    let v = 0; try { v = a.v(); } catch {}
+    showModal(`<div class="card p-6 modal text-center">
+        <div class="text-7xl ${got ? 'reveal' : ''}" style="${got ? '' : 'filter:grayscale(1);opacity:.35'}">${a.icon}</div>
+        <div class="text-2xl font-black mt-3">${a.name}</div>
+        <p class="mt-1" style="color:var(--muted)">${a.desc}</p>
+        ${got ? `<div class="pill mt-3" style="background:var(--green-t);color:var(--green-d)">✓ ${new Date(got).toLocaleDateString('zh-TW')} 解鎖</div>`
+            : `<div class="mt-4"><div class="bar"><i style="width:${Math.min(100, v / a.goal * 100)}%;background:var(--gold)"></i></div><div class="text-sm mt-1" style="color:var(--muted)">${Math.min(v, a.goal)} / ${a.goal}</div></div>`}
+        ${a.coins ? `<div class="text-sm mt-2" style="color:#a67c00">獎勵 🪙 ${a.coins}</div>` : ''}
+        <button class="btn w-full mt-5" onclick="closeModal()">關閉</button>
+    </div>`);
 }
 
 function exportData() {
@@ -1829,12 +2103,24 @@ function startBoss(regionId) {
     $('play-foot').innerHTML = `<button class="btn red w-full text-lg" onclick="G.play.phase='quiz'; renderChallenge()">開戰！</button>`;
 }
 
-function startReview() {
-    const words = Object.values(S.dex);
+function startReview(mode = 'auto') {
+    closeModal();
+    const words = Object.values(S.dex).map(srsInit);
     if (words.length < 4) { toast('圖鑑至少要有 4 個單字才能訓練，先去冒險吧！'); return; }
-    // 熟練度低、很久沒複習的單字優先
-    const weighted = [...words].sort((a, b) => (mastery(a) - mastery(b)) || ((a.seen || 0) - (b.seen || 0))).slice(0, 16);
-    G.play = { kind: 'review', words, phase: 'quiz', queue: mixedChallenges(weighted, Math.min(10, weighted.length)).map(c => ({ ...c, pool: words })), qi: 0, hearts: Infinity, mistakes: 0, combo: 0, maxCombo: 0, done: 0, total: Math.min(10, weighted.length) };
+    let pickList;
+    if (mode === 'wrong') {
+        pickList = wrongWords();
+        if (!pickList.length) return toast('錯題本是空的，太厲害了！', 'good');
+    } else {
+        // 先排到期的單字，再補熟練度低、很久沒看的
+        const due = dueWords().sort((a, b) => a.due - b.due);
+        const rest = words.filter(w => !due.includes(w)).sort((a, b) => (mastery(a) - mastery(b)) || ((a.seen || 0) - (b.seen || 0)));
+        pickList = [...due, ...rest];
+    }
+    const n = Math.min(10, pickList.length);
+    const chosen = pickList.slice(0, n);
+    const queue = chosen.map(w => makeChallenge(pick(['meaning', 'listen', 'reverse', 'spell', 'fill']), w, words));
+    G.play = { kind: 'review', mode, words, phase: 'quiz', queue, qi: 0, hearts: Infinity, mistakes: 0, combo: 0, maxCombo: 0, done: 0, total: n };
     openPlay();
     renderChallenge();
 }
@@ -1921,6 +2207,7 @@ function finishGame(id, score, note = '') {
     const g = GAMES.find(x => x.id === id);
     stopGame();
     if (G.play) G.play.finished = true;
+    bumpStat('games');
     const m = activeMon();
     S.best = S.best || {};
     const isBest = score > (S.best[id] || 0);
@@ -2060,7 +2347,7 @@ function catchLoop(now) {
                     scorePop(arena, g.x, 70, `✗ ${it.w.word}`, 'var(--red-d)');
                     playSound('wrong');
                     arena.classList.remove('hurt'); void arena.offsetWidth; arena.classList.add('hurt');
-                    if (navigator.vibrate) navigator.vibrate(60);
+                    buzz(60);
                 }
                 return false;
             }
@@ -2208,6 +2495,286 @@ function flipCard(i) {
             g.lock = false;
         }, 850);
     }
+}
+
+// ============================================================
+// ⚔️ 怪獸對戰競技場（離線，題目來自圖鑑）
+// ============================================================
+const SP_EL = { dragon: 'fire', sea: 'water', cat: 'night', bird: 'wind', bunny: 'dream', bug: 'grass', dino: 'rock', ghost: 'star' };
+const ELEM = {
+    fire:  { n: '火', e: '🔥', beats: ['grass', 'star'] },
+    water: { n: '水', e: '💧', beats: ['fire', 'rock'] },
+    grass: { n: '草', e: '🌿', beats: ['water', 'rock'] },
+    wind:  { n: '風', e: '🌪️', beats: ['grass', 'dream'] },
+    rock:  { n: '岩', e: '🪨', beats: ['fire', 'wind'] },
+    night: { n: '夜', e: '🌙', beats: ['dream', 'star'] },
+    dream: { n: '夢', e: '🌈', beats: ['night', 'water'] },
+    star:  { n: '星', e: '⭐', beats: ['night', 'wind'] }
+};
+const TRAINERS = [
+    { name: '新手小明',   lv: 2,  sp: 'bug' },    { name: '甜點師小美', lv: 3,  sp: 'bunny' },
+    { name: '登山客阿強', lv: 4,  sp: 'dino' },   { name: '游泳選手莉莉', lv: 5, sp: 'sea' },
+    { name: '夜貓子大雄', lv: 6,  sp: 'cat' },    { name: '飛行教練 Max', lv: 7, sp: 'bird' },
+    { name: '火焰雙胞胎', lv: 8,  sp: 'dragon' }, { name: '幽靈少女 Mia', lv: 10, sp: 'ghost' },
+    { name: '冠軍候補 Leo', lv: 12, sp: 'dino' }, { name: '競技場冠軍 Aurora', lv: 14, sp: 'dragon' }
+];
+function elOf(species) { return ELEM[SP_EL[species] || 'fire']; }
+function typeMult(atkSp, defSp) {
+    const a = SP_EL[atkSp], d = SP_EL[defSp];
+    if (ELEM[a].beats.includes(d)) return 1.5;
+    if (ELEM[d].beats.includes(a)) return 0.75;
+    return 1;
+}
+function battleStats(lv) { return { max: 50 + lv * 8, atk: 9 + lv * 2 }; }
+function multText(k) { return k > 1 ? '<b style="color:var(--green-d)">效果絕佳</b>' : k < 1 ? '<b style="color:var(--red-d)">效果不好</b>' : '普通'; }
+
+function openArena() {
+    const m = activeMon();
+    if (!m) return;
+    closeModal();
+    stopGame();
+    G.play = { kind: 'arena', phase: 'lobby', finished: true };
+    openPlay(); hideSheet();
+    const li = levelInfo(m), el = elOf(m.species);
+    $('play-head').innerHTML = `<button class="btn white sm" onclick="closePlay()" aria-label="離開">✕</button><div class="flex-1 font-black text-lg">⚔️ 怪獸競技場</div><span class="pill" style="background:#fff1c2;color:#8a6500">🏆 ${S.arena.trophies}</span>`;
+    $('play-body').innerHTML = `<div class="anim-in">
+        <div class="card p-4 flex items-center gap-3 arena-me">
+            <div class="text-5xl" style="${emojiStyle(m)}">${formOf(m).e}</div>
+            <div class="flex-1"><div class="font-black text-lg">${esc(m.name)} <span class="text-sm" style="color:var(--muted)">Lv.${li.lv}</span></div>
+                <div class="text-xs" style="color:var(--muted)">屬性 ${el.e}${el.n}・HP ${battleStats(li.lv).max}・攻擊 ${battleStats(li.lv).atk}・戰績 ${S.arena.wins} 勝 ${S.arena.losses} 敗</div>
+                <div class="text-xs mt-1" style="color:var(--muted)">${el.e}${el.n} 剋 ${el.beats.map(b => ELEM[b].e + ELEM[b].n).join('、')}</div></div>
+        </div>
+        <p class="text-xs my-3" style="color:var(--muted)">💡 答對單字題才能出招！屬性技威力大但題目較難；親密度越高越容易爆擊。換夥伴可以到小屋的牧場。</p>
+        <div class="space-y-2">${TRAINERS.map((t, i) => {
+            const open = i <= S.arena.rank, beaten = i < S.arena.rank;
+            const sp = SPECIES.find(s => s.id === t.sp), fe = elOf(t.sp);
+            const k = typeMult(m.species, t.sp);
+            return `<button class="card p-3 w-full flex items-center gap-3 text-left ${open ? '' : 'opacity-50'}" ${open ? `onclick="startBattle(${i})"` : ''}>
+                <div class="w-8 text-center font-black" style="color:var(--muted)">${i + 1}</div>
+                <div class="text-4xl" style="${open ? '' : 'filter:brightness(0);opacity:.3'}">${sp.forms[formIdx(t.lv)].e}</div>
+                <div class="flex-1 min-w-0"><div class="font-black truncate">${open ? t.name : '???'}</div>
+                    <div class="text-xs" style="color:var(--muted)">Lv.${t.lv}・${fe.e}${fe.n}${open ? `・我方攻擊 ${multText(k)}` : ''}</div></div>
+                ${beaten ? '<span class="pill" style="background:var(--green-t);color:var(--green-d)">✓ 已擊敗</span>' : open ? '<span class="btn sm red">挑戰</span>' : '<span>🔒</span>'}
+            </button>`; }).join('')}</div>
+    </div>`;
+    $('play-foot').innerHTML = '';
+}
+
+function startBattle(i) {
+    const m = activeMon();
+    const t = TRAINERS[i];
+    stopGame();
+    let words = Object.values(S.dex).filter(d => d.mean);
+    if (words.length < 4) words = [...words, ...BASIC_WORDS.filter(b => !words.some(x => x.word === b.word))];
+    const me = battleStats(levelInfo(m).lv), foe = battleStats(t.lv);
+    const b = G.game = { id: 'battle', i, t, words, heals: 2,
+        me: { ...me, hp: me.max, sp: m.species }, foe: { ...foe, hp: foe.max, sp: t.sp }, busy: false, log: `${t.name} 派出了 ${SPECIES.find(s => s.id === t.sp).forms[formIdx(t.lv)].n}！` };
+    G.play = { kind: 'arena', phase: 'battle', finished: false };
+    openPlay(); hideSheet();
+    b.onKey = e => {
+        if (G.modalOpen || !G.game || G.game.id !== 'battle') return;
+        if (/^[1-4]$/.test(e.key)) { const btn = document.querySelector(`#battle-panel [data-k="${e.key}"]`); if (btn && !btn.disabled) btn.click(); }
+    };
+    document.addEventListener('keydown', b.onKey);
+    renderBattle();
+    playSound('pop');
+}
+
+function renderBattle() {
+    const b = G.game, m = activeMon();
+    const sp = SPECIES.find(s => s.id === b.t.sp);
+    const hpBar = (x, color) => `<div class="bar" style="height:10px"><i style="width:${Math.max(0, x.hp / x.max * 100)}%;background:${x.hp / x.max < .3 ? 'var(--red)' : color}"></i></div>`;
+    $('play-head').innerHTML = `<button class="btn white sm" onclick="confirmQuit()" aria-label="離開">✕</button><div class="flex-1 font-black">⚔️ VS ${esc(b.t.name)}</div>`;
+    $('play-body').innerHTML = `
+    <div class="battle-field">
+        <div class="hp-card" style="top:12px;left:12px">
+            <div class="flex justify-between text-sm font-black"><span>${esc(sp.forms[formIdx(b.t.lv)].n)}</span><span>Lv.${b.t.lv} ${elOf(b.t.sp).e}</span></div>
+            ${hpBar(b.foe, 'var(--green)')}<div class="text-[11px] text-right" style="color:var(--muted)">${Math.max(0, Math.ceil(b.foe.hp))}/${b.foe.max}</div>
+        </div>
+        <div id="foe-mon" class="b-mon" style="top:34px;right:10%">${sp.forms[formIdx(b.t.lv)].e}</div>
+        <div class="b-shadow" style="top:128px;right:9%"></div>
+        <div id="me-mon" class="b-mon me" style="bottom:22px;left:9%"><span style="${emojiStyle(m)}">${formOf(m).e}</span></div>
+        <div class="b-shadow" style="bottom:16px;left:8%"></div>
+        <div class="hp-card" style="bottom:14px;right:12px">
+            <div class="flex justify-between text-sm font-black"><span>${esc(m.name)}</span><span>Lv.${levelInfo(m).lv} ${elOf(m.species).e}</span></div>
+            ${hpBar(b.me, 'var(--green)')}<div class="text-[11px] text-right" style="color:var(--muted)">${Math.max(0, Math.ceil(b.me.hp))}/${b.me.max}</div>
+        </div>
+    </div>
+    <div class="card p-3 mt-3 text-sm font-black min-h-[44px]" id="battle-log">${b.log}</div>
+    <div id="battle-panel" class="mt-3"></div>`;
+    renderMoves();
+}
+
+function renderMoves() {
+    const b = G.game, m = activeMon(), el = elOf(m.species);
+    const k = typeMult(m.species, b.t.sp);
+    $('play-foot').innerHTML = '';
+    $('battle-panel').innerHTML = `<div class="grid grid-cols-1 gap-2">
+        <button class="move" data-k="1" onclick="chooseMove('hit')"><span class="text-2xl">💥</span><span class="flex-1 text-left"><b>撞擊</b><span class="block text-xs" style="color:var(--muted)">選中文意思・穩定傷害</span></span><span class="kbd">1</span></button>
+        <button class="move" data-k="2" onclick="chooseMove('special')" style="border-color:${SPECIES.find(s => s.id === m.species).color}"><span class="text-2xl">${el.e}</span><span class="flex-1 text-left"><b>${el.n}屬性必殺</b><span class="block text-xs" style="color:var(--muted)">看中文選英文・威力 ×1.6・對手 ${multText(k)}</span></span><span class="kbd">2</span></button>
+        <button class="move" data-k="3" onclick="chooseMove('heal')" ${b.heals ? '' : 'disabled'}><span class="text-2xl">💚</span><span class="flex-1 text-left"><b>恢復（剩 ${b.heals} 次）</b><span class="block text-xs" style="color:var(--muted)">聽音辨字・回復 35% HP</span></span><span class="kbd">3</span></button>
+    </div>`;
+}
+
+function chooseMove(kind) {
+    const b = G.game;
+    if (!b || b.busy) return;
+    if (kind === 'heal' && !b.heals) return;
+    const w = pick(b.words);
+    const type = kind === 'hit' ? 'meaning' : kind === 'heal' ? 'listen' : (blankSentence(w) && Math.random() < .5 ? 'fill' : 'reverse');
+    const c = makeChallenge(type, w, b.words);
+    b.move = kind; b.q = c;
+    const prompt = type === 'meaning' ? `<div class="text-3xl font-black">${esc(w.word)}</div>`
+        : type === 'listen' ? `<button class="btn blue" onclick="speak(G.game.q.w.word)">🔊 再聽一次</button>`
+        : type === 'fill' ? `<div class="text-lg">${esc(c.sentence).replace('_____', '<u>　　　</u>')}</div>`
+        : `<div class="text-2xl font-black" style="color:var(--green-d)">${esc(w.mean)}</div>`;
+    $('battle-panel').innerHTML = `<div class="card p-3 text-center anim-in">
+        <div class="text-xs font-black mb-2" style="color:var(--muted)">${c.label}</div>${prompt}
+        <div class="bar timer mt-3" style="height:6px"><i id="timer-bar" style="width:100%"></i></div></div>
+        <div class="grid grid-cols-2 gap-2 mt-2">${c.options.map((o, i) => `<button class="opt center" data-k="${i + 1}" data-i="${i}" onclick="battleAnswer(${i})"><span class="flex-1 break-words">${esc(o)}</span></button>`).join('')}</div>`;
+    if (c.autoSpeak) setTimeout(() => speak(w.word), 200);
+    stopTimer();
+    const t0 = Date.now(), sec = 12;
+    G.timer = setInterval(() => {
+        const left = sec - (Date.now() - t0) / 1000, bar = $('timer-bar');
+        if (bar) bar.style.width = Math.max(0, left / sec * 100) + '%';
+        if (left <= 0) battleAnswer(-1);
+    }, 100);
+}
+
+function battleFx(target, text, color) {
+    const el = $(target === 'foe' ? 'foe-mon' : 'me-mon');
+    if (!el) return;
+    el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit');
+    const n = document.createElement('div');
+    n.className = 'score-pop';
+    n.style.cssText = `left:50%;top:0;color:${color};font-size:1.6rem;text-shadow:0 2px 0 #fff`;
+    n.textContent = text;
+    el.appendChild(n);
+    setTimeout(() => n.remove(), 800);
+}
+function lunge(who) {
+    const el = $(who === 'me' ? 'me-mon' : 'foe-mon');
+    if (!el) return;
+    el.classList.remove('lunge-me', 'lunge-foe'); void el.offsetWidth; el.classList.add(who === 'me' ? 'lunge-me' : 'lunge-foe');
+}
+function setLog(t) { const el = $('battle-log'); if (el) el.innerHTML = t; G.game.log = t; }
+function refreshHp() {
+    const b = G.game;
+    document.querySelectorAll('.hp-card .bar > i').forEach((bar, idx) => {
+        const x = idx === 0 ? b.foe : b.me;
+        bar.style.width = Math.max(0, x.hp / x.max * 100) + '%';
+        if (x.hp / x.max < .3) bar.style.background = 'var(--red)';
+    });
+    document.querySelectorAll('.hp-card .text-right').forEach((t, idx) => { const x = idx === 0 ? b.foe : b.me; t.textContent = `${Math.max(0, Math.ceil(x.hp))}/${x.max}`; });
+}
+
+function battleAnswer(i) {
+    const b = G.game;
+    if (!b || b.id !== 'battle' || b.busy) return;
+    b.busy = true;
+    stopTimer();
+    const c = b.q, m = activeMon();
+    const ok = i >= 0 && c.options[i] === c.answer;
+    document.querySelectorAll('#battle-panel .opt').forEach(btn => {
+        btn.disabled = true;
+        if (c.options[Number(btn.dataset.i)] === c.answer) btn.classList.add('ok');
+        if (Number(btn.dataset.i) === i && !ok) btn.classList.add('bad');
+    });
+    S.totals.answered++;
+    if (ok) { S.totals.correct++; progressEggs(1); }
+    const key = c.w.word.toLowerCase();
+    if (S.dex[key]) { if (ok) S.dex[key].correct++; else { S.dex[key].wrong++; srsHit(S.dex[key], false); } }
+
+    setTimeout(() => {
+        if (!ok) {
+            playSound('wrong');
+            setLog(`${i < 0 ? '⏰ 太慢了！' : '答錯了…'}招式失敗！（${esc(c.w.word)} = ${esc(c.w.mean)}）`);
+        } else if (b.move === 'heal') {
+            b.heals--;
+            const amt = Math.round(b.me.max * .35);
+            b.me.hp = Math.min(b.me.max, b.me.hp + amt);
+            battleFx('me', `+${amt}`, 'var(--green-d)');
+            playSound('coin');
+            setLog(`💚 ${esc(m.name)} 回復了 ${amt} HP！`);
+        } else {
+            const k = b.move === 'special' ? 1.6 * typeMult(m.species, b.t.sp) : 1;
+            const crit = Math.random() < 0.05 + hearts(m) * 0.04;
+            const dmg = Math.round(b.me.atk * k * (0.9 + Math.random() * 0.2) * (crit ? 1.5 : 1));
+            lunge('me');
+            setTimeout(() => { b.foe.hp -= dmg; battleFx('foe', `-${dmg}`, 'var(--red-d)'); refreshHp(); }, 220);
+            playSound(crit ? 'combo' : 'correct');
+            setLog(`${b.move === 'special' ? elOf(m.species).e : '💥'} ${esc(m.name)} 造成 ${dmg} 點傷害！${crit ? ' <b style="color:var(--orange-d)">會心一擊！</b>' : ''}${b.move === 'special' ? `（${multText(typeMult(m.species, b.t.sp))}）` : ''}`);
+        }
+        refreshHp();
+        setTimeout(() => {
+            if (b.foe.hp <= 0) return endBattle(true);
+            foeTurn();
+        }, 1100);
+    }, 450);
+}
+
+function foeTurn() {
+    const b = G.game;
+    if (!b || b.id !== 'battle') return;
+    const m = activeMon();
+    const name = SPECIES.find(s => s.id === b.t.sp).forms[formIdx(b.t.lv)].n;
+    if (Math.random() < 0.12) {
+        setLog(`${name} 的攻擊被躲開了！`);
+    } else {
+        const k = typeMult(b.t.sp, m.species);
+        const dmg = Math.round(b.foe.atk * k * (0.85 + Math.random() * 0.3));
+        lunge('foe');
+        setTimeout(() => { b.me.hp -= dmg; battleFx('me', `-${dmg}`, 'var(--red-d)'); refreshHp(); buzz(60); }, 220);
+        playSound('wrong');
+        setLog(`${elOf(b.t.sp).e} ${name} 反擊，造成 ${dmg} 點傷害！（${multText(k)}）`);
+    }
+    setTimeout(() => {
+        if (b.me.hp <= 0) return endBattle(false);
+        b.busy = false;
+        renderMoves();
+    }, 1200);
+}
+
+function endBattle(win) {
+    const b = G.game, m = activeMon();
+    stopGame(); stopTimer();
+    G.play.finished = true;
+    let coins, xp = 0, extra = '';
+    if (win) {
+        const first = b.i === S.arena.rank;
+        if (first) S.arena.rank = Math.min(TRAINERS.length, S.arena.rank + 1);
+        S.arena.wins++;
+        S.arena.trophies += first ? 10 + b.i * 5 : 3;
+        coins = first ? 20 + b.i * 10 : 8;
+        xp = addMonsterXP(first ? 10 + b.i * 4 : 5);
+        cheer(15); addAffection(2);
+        if (first && b.i === TRAINERS.length - 1) extra = '<div class="mt-4 p-3 rounded-2xl font-black" style="background:#fff1c2;color:#8a6500">🥇 你成為了競技場冠軍！</div>';
+        else if (first && TRAINERS[b.i + 1]) extra = `<div class="mt-4 p-3 rounded-2xl font-black" style="background:var(--green-t);color:var(--green-d)">🔓 新對手：${esc(TRAINERS[b.i + 1].name)}</div>`;
+        playSound('win'); burst();
+    } else {
+        S.arena.losses++;
+        coins = 5;
+        cheer(-5);
+        playSound('fail');
+        extra = `<p class="mt-3 text-sm" style="color:var(--muted)">💡 先練等級，或換一隻屬性相剋的怪獸再來！</p>`;
+    }
+    S.coins += coins;
+    markActive();
+    save();
+    $('play-head').innerHTML = '';
+    $('play-body').innerHTML = `<div class="text-center pt-8 anim-in">
+        <div class="text-6xl">${win ? '🏆' : '💫'}</div>
+        <div class="text-3xl font-black mt-3">${win ? '勝利！' : '輸了…'}</div>
+        <div class="my-4">${monsterHTML(96, false)}</div>
+        <div class="font-black">${win ? `${esc(m.name)} 打敗了 ${esc(b.t.name)}！` : `${esc(m.name)} 累倒了…`}</div>
+        <div class="grid grid-cols-2 gap-2 mt-4 max-w-xs mx-auto">
+            <div class="card p-3"><div class="text-xl font-black" style="color:#a67c00">+${coins}</div><div class="text-xs" style="color:var(--muted)">🪙 金幣</div></div>
+            <div class="card p-3"><div class="text-xl font-black" style="color:var(--orange-d)">+${xp}</div><div class="text-xs" style="color:var(--muted)">⭐ 經驗</div></div>
+        </div>${extra}
+    </div>`;
+    $('play-foot').innerHTML = `<div class="flex gap-2"><button class="btn white flex-1" onclick="openArena()">回競技場</button><button class="btn red flex-1" onclick="startBattle(${win && TRAINERS[b.i + 1] && b.i + 1 <= S.arena.rank ? b.i + 1 : b.i})">${win && TRAINERS[b.i + 1] ? '下一位對手' : '再戰一次'}</button></div>`;
+    if (G.modalQueue.length) setTimeout(runModalQueue, 900);
 }
 
 async function startGrammar(i) {
@@ -2474,7 +3041,7 @@ function voiceAnswer() {
         answered = true;
         stopListen();
         const ok = [text, ...alts].some(t => norm(t) === norm(c.w.word));
-        resolve(ok, text);
+        bumpStat('voice'); resolve(ok, text);
     }, () => { const b = $('voice-btn'); if (b) { b.textContent = '🎤'; b.classList.remove('wiggle'); } });
 }
 
@@ -2502,26 +3069,27 @@ function resolve(ok, given) {
     const key = c.w?.word.toLowerCase();
     if (ok) {
         S.totals.correct++;
-        p.done++; p.combo++; p.maxCombo = Math.max(p.maxCombo, p.combo);
+        p.done++; p.combo++; p.maxCombo = Math.max(p.maxCombo, p.combo); S.stats.maxCombo = Math.max(S.stats.maxCombo || 0, p.combo);
         if (p.kind === 'boss') p.bossHp--;
-        if (p.kind === 'review' && S.dex[key]) { S.dex[key].correct++; S.dex[key].seen = Date.now(); S.coins += 2; cheer(1); bumpQuest('reviews'); }
+        if (p.kind === 'review' && S.dex[key]) { S.dex[key].correct++; S.dex[key].seen = Date.now(); srsHit(S.dex[key], true); S.coins += 2; cheer(1); bumpQuest('reviews'); S.stats.reviews = (S.stats.reviews || 0) + 1; }
         if (p.kind === 'fun') S.coins += 1;
         progressEggs(1);
         if (p.kind === 'grammar') S.coins += 3;
-        if (p.kind === 'boss' && S.dex[key]) S.dex[key].correct++;
+        if (p.kind === 'boss' && S.dex[key]) { S.dex[key].correct++; srsHit(S.dex[key], true); }
         playSound(p.combo >= 3 ? 'combo' : 'correct');
         throwBall(p.kind === 'boss' ? '💥' : '⚾');
     } else {
         p.combo = 0; p.mistakes++;
         if (p.hearts !== Infinity) p.hearts--;
-        if ((p.kind === 'review' || p.kind === 'boss') && S.dex[key]) { S.dex[key].wrong++; S.dex[key].seen = Date.now(); }
+        if ((p.kind === 'review' || p.kind === 'boss') && S.dex[key]) { S.dex[key].wrong++; S.dex[key].seen = Date.now(); srsHit(S.dex[key], false); }
+        if (p.kind === 'stage' && key) (p.wrongSet = p.wrongSet || new Set()).add(key);
         // 答錯的題目放到最後再考一次（文法題除外）
         if (p.kind !== 'grammar') {
             const again = makeChallenge(c.type, c.w, p.words || p.queue.map(q => q.w));
             p.queue.push(again);
         }
         playSound('wrong');
-        if (navigator.vibrate) navigator.vibrate(80);
+        buzz(80);
     }
     save();
     renderPlayHead();
@@ -2626,7 +3194,9 @@ function finishRun() {
         p.words.forEach(w => {
             const k = w.word.toLowerCase();
             if (!S.dex[k]) {
-                S.dex[k] = { word: w.word, pos: w.pos || '', ipa: w.ipa || '', mean: w.mean, example: w.example || '', trans: w.trans || '', distractors: w.distractors || [], rarity: w.rarity, region: p.region.id, caught: Date.now(), correct: 1, wrong: 0, seen: Date.now(), ...(w.parts ? { parts: w.parts, partMeans: w.partMeans } : {}) };
+                S.dex[k] = { word: w.word, pos: w.pos || '', ipa: w.ipa || '', mean: w.mean, example: w.example || '', trans: w.trans || '', distractors: w.distractors || [], rarity: w.rarity, region: p.region.id, caught: Date.now(), correct: 1, wrong: 0, seen: Date.now(), ...(w.parts ? { parts: w.parts, partMeans: w.partMeans } : {}),
+                    // 關卡中答錯過的單字：立刻進錯題本、今天就要複習
+                    box: 1, due: p.wrongSet?.has(k) ? Date.now() : Date.now() + DAY, ...(p.wrongSet?.has(k) ? { lastWrong: Date.now(), wrong: 1 } : {}) };
                 newCount++;
             }
         });
@@ -2636,7 +3206,7 @@ function finishRun() {
         S.foods.apple = (S.foods.apple || 0) + food;
         cheer(5 + stars * 3);
         bumpQuest('caught', newCount);
-        bumpQuest('stages');
+        bumpQuest('stages'); bumpStat('stages'); if (stars === 3) bumpStat('perfect');
         headline = stars === 3 ? '完美捕捉！' : '關卡完成！';
         extra = `<div class="mt-5 text-left"><div class="text-sm font-black mb-2">📖 收進圖鑑（${newCount} 個新單字）</div>
             <div class="flex flex-wrap gap-2">${p.words.map(w => `<span class="pill" style="background:${p.region.t};color:${p.region.cd}">${esc(w.word)}</span>`).join('')}</div></div>`;
@@ -2667,7 +3237,7 @@ function finishRun() {
         xp = p.done * 3;
         headline = `答對 ${p.done} / ${p.total} 題`;
         stars = p.done === p.total ? 3 : p.done >= p.total - 1 ? 2 : 1;
-        if (p.done === p.total) coins += 10;
+        if (p.done === p.total) { coins += 10; bumpStat('grammarPerfect'); }
     } else if (p.kind === 'fun') {
         const m = activeMon();
         cheer(15 + p.done * 3);
@@ -2745,7 +3315,7 @@ function chatVoice() {
     btn.textContent = '👂'; btn.classList.add('wiggle');
     listen(G.chat.lang || 'en-US', (text, final) => {
         input.value = text;
-        if (final) { playSound('tap'); stopListen(); }
+        if (final) { bumpStat('voice'); playSound('tap'); stopListen(); }
     }, () => { const b = $('chat-mic'); if (b) { b.textContent = '🎤'; b.classList.remove('wiggle'); } if (isFinePointer()) input.focus(); });
 }
 
@@ -2810,7 +3380,7 @@ async function sendChat() {
         G.chat.history = [...messages, { role: 'assistant', content: res.content }];
         $('typing')?.remove();
         addBotMsg(d);
-        cheer(4); S.coins += 1; markActive(); progressEggs(zh ? 0 : 1);
+        cheer(4); S.coins += 1; bumpStat('chats'); markActive(); progressEggs(zh ? 0 : 1);
         if (!zh && d.score != null) { S.totals.answered++; if (Number(d.score) >= 80) S.totals.correct++; }
         save();
     } catch (e) {
@@ -2913,6 +3483,21 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
 ensureDaily();
 save();
 render();
+// PWA：註冊離線快取、接住安裝提示
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('Service worker 註冊失敗', err));
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); G.installEvt = e; if (G.tab === 'me') renderMe(); });
+window.addEventListener('appinstalled', () => { G.installEvt = null; toast('📲 已安裝到主畫面！', 'good'); if (G.tab === 'me') renderMe(); });
+function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
+async function installApp() {
+    if (!G.installEvt) return;
+    G.installEvt.prompt();
+    await G.installEvt.userChoice.catch(() => null);
+    G.installEvt = null;
+    if (G.tab === 'me') renderMe();
+}
+
 if (!S.mons.length) {
     starterModal();
     if (!apiKey) G.modalQueue.push(() => openKeyModal(true));
