@@ -95,6 +95,8 @@
         .acc { position: absolute; left: 50%; transform: translateX(-50%); pointer-events: none; animation: bob 2.6s ease-in-out infinite; }
         .acc.head { top: -32%; }
         .acc.face { top: 22%; }
+        /* Q 版圖：配件依每個型態的臉部錨點定位（left/top/rotate 由 accHTML 寫在 style） */
+        .acc.fit { line-height: 1; }
         .shadow { width: 60%; height: 12px; margin: 4px auto 0; border-radius: 50%; background: rgba(36,51,31,.10); animation: shadow 2.6s ease-in-out infinite; }
         @keyframes bob { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-8px) scale(1.02, .98); } }
         .acc { animation-name: bobacc; }
@@ -155,6 +157,9 @@
         .fe { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -0.22em; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
         .monster .fe, .acc .fe, .b-mon .fe, .monster-wrap .fe { width: 1em; height: 1em; vertical-align: bottom; }
         .tab .ico .fe { width: 1.7rem; height: 1.7rem; vertical-align: middle; }
+        /* Q 版原創美術：圖已裁到貼邊，放大一點讓角色更有存在感 */
+        .fe.art { width: 1.3em; height: 1.3em; vertical-align: -0.3em; }
+        .monster .fe.art, .b-mon .fe.art, .monster-wrap .fe.art { width: 1.15em; height: 1.15em; vertical-align: bottom; }
 
         /* ===== 場景（純 CSS，不用 SVG） ===== */
         .scene { position: relative; overflow: hidden; background: linear-gradient(180deg, var(--sky-a) 0%, var(--sky-b) 100%); }
@@ -581,7 +586,21 @@ const FLUENT = {"⏰":"Alarm clock|alarm_clock","⏱":"Stopwatch|stopwatch","☁
 // 載入失敗時自動退回原本的 emoji 文字
 // ============================================================
 const FLUENT_CDN = 'https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/';
+
+// Q 版原創美術（art/*.webp）：怪獸 24 張 + 魔王 20 張
+// 每張圖配一個私用區字元當代號，走跟 Fluent 圖示同一條替換流程；圖檔載入失敗時退回原本的 emoji
+const ART = {};
+function artChar(file, fallback) {
+    const ch = String.fromCodePoint(0xE000 + Object.keys(ART).length);
+    ART[ch] = { src: `art/${file}.webp`, fb: fallback };
+    FLUENT[ch] = '@';
+    return ch;
+}
+SPECIES.forEach(s => s.forms.forEach((f, i) => { f.e = artChar(`sp_${s.id}_${i + 1}`, f.e); }));
+REGIONS.forEach(r => { r.boss = artChar(`boss_${r.id}`, r.boss); });
+
 function fluentUrl(e) {
+    if (ART[e]) return ART[e].src;
     const v = FLUENT[e] || FLUENT[e + '️'] || FLUENT[e.replace(/️/g, '')];
     if (!v) return null;
     const skin = v[0] === '!';
@@ -600,12 +619,13 @@ let fluentOn = true;
 
 function fluentImg(e) {
     const img = document.createElement('img');
-    img.className = 'fe';
-    img.alt = e;
+    const art = ART[e];
+    img.className = art ? 'fe art' : 'fe';
+    img.alt = art ? art.fb : e;
     img.draggable = false;
     img.decoding = 'async';
     img.src = fluentUrl(e);
-    img.onerror = () => img.replaceWith(document.createTextNode(e));
+    img.onerror = () => img.replaceWith(art ? fluentImg(art.fb) : document.createTextNode(e));
     return img;
 }
 
@@ -816,6 +836,34 @@ function addMonsterXP(n) {
 function emojiStyle(m) { return m?.shiny ? 'filter:hue-rotate(150deg) saturate(1.4);' : ''; }
 function eggStyle(sp) { return `filter:hue-rotate(${sp.hue}deg) saturate(${sp.rare ? 2 : 1.3});`; }
 
+// 配件錨點（單位：圖片邊長的 %），每族 3 個型態：
+// [眼睛中心 x, y, 雙眼外緣寬度, 臉的傾斜角度, 頭頂 x, y, 頭寬]
+const ACC_POS = {
+    dragon: [[48, 51, 42, 8, 45, 24, 60], [34, 36, 33, 5, 35, 18, 40], [38, 34, 23, 0, 38, 21, 28]],
+    sea:    [[37, 65, 44, 6, 42, 33, 60], [38, 36, 40, 11, 40, 13, 55], [32, 58, 34, 4, 43, 31, 50]],
+    cat:    [[43, 49, 46, 15, 44, 16, 55], [29, 45, 35, 3, 27, 22, 38], [35, 42, 28, 0, 37, 10, 40]],
+    bird:   [[44, 51, 38, 7, 44, 26, 60], [42, 48, 35, 11, 38, 27, 50], [37, 40, 26, 0, 36, 26, 38]],
+    bunny:  [[36, 60, 39, 7, 33, 35, 55], [30, 45, 31, 3, 30, 26, 42], [34, 52, 27, 3, 33, 28, 36]],
+    bug:    [[37, 49, 42, 2, 36, 23, 62], [36, 52, 40, 10, 38, 22, 50], [37, 46, 24, 4, 38, 30, 34]],
+    dino:   [[43, 42, 44, 6, 45, 16, 65], [29, 29, 30, 13, 30, 10, 42], [40, 30, 26, 8, 37, 11, 40]],
+    ghost:  [[43, 50, 38, 12, 46, 23, 60], [43, 53, 34, 9, 50, 17, 60], [41, 38, 32, 0, 40, 18, 50]]
+};
+// 每種配件的大小與擺法：s = 相對眼寬（臉部）或頭寬（頭部）的比例；up = 往上抬多少個自身高度；dx/dy = 以頭寬／眼寬為單位的位移
+const ACC_FIT = {
+    glasses: { s: 1.2 }, shades: { s: 1.2 }, scarf: { s: .8, dy: .55 },
+    crown: { s: .6, up: .38 }, tophat: { s: .7, up: .3 }, grad: { s: .8, up: .25 }, cap: { s: .8, up: .05 },
+    bow: { s: .5, up: .2 }, flower: { s: .4, up: .1, dx: .3 }, phones: { s: 1.1, up: -.3 }
+};
+function accHTML(m, it, size, accSize) {
+    const p = ACC_POS[m.species]?.[formIdx(levelInfo(m).lv)], f = ACC_FIT[it.id];
+    if (!p || !f) return `<span class="acc ${it.slot}" style="font-size:${accSize}px">${it.emoji}</span>`;
+    const [ex, ey, ew, rot, hx, hy, hw] = p, k = size * 1.15 / 100, isFace = it.slot === 'face';
+    const fs = (isFace ? ew : hw) * k * f.s;
+    const x = isFace ? ex : hx + (f.dx || 0) * hw;
+    const y = isFace ? ey + (f.dy || 0) * ew : hy - (f.up || 0) * fs / k;
+    return `<span class="acc fit" style="font-size:${fs.toFixed(1)}px;left:${x.toFixed(1)}%;top:calc(${y.toFixed(1)}% - .5em)"><span style="display:inline-block;rotate:${(isFace ? rot : rot * .6).toFixed(0)}deg">${it.emoji}</span></span>`;
+}
+
 function monsterHTML(size = 120, interactive = true, m = activeMon()) {
     if (!m) return '';
     const head = SHOP.find(s => s.id === m.head);
@@ -824,8 +872,8 @@ function monsterHTML(size = 120, interactive = true, m = activeMon()) {
     return `<div class="text-center">
         <div class="monster-wrap" ${interactive ? 'onclick="pokeMonster(this)"' : ''} style="font-size:${size}px">
             <span class="monster" style="${emojiStyle(m)}">${formOf(m).e}</span>
-            ${head ? `<span class="acc head" style="font-size:${accSize}px">${head.emoji}</span>` : ''}
-            ${face ? `<span class="acc face" style="font-size:${accSize}px">${face.emoji}</span>` : ''}
+            ${head ? accHTML(m, head, size, accSize) : ''}
+            ${face ? accHTML(m, face, size, accSize) : ''}
             ${m.shiny ? `<span class="acc" style="top:-10%;left:85%;font-size:${Math.round(size * .25)}px">✨</span>` : ''}
         </div>
         <div class="shadow" style="width:${Math.round(size * .6)}px"></div>
