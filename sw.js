@@ -1,6 +1,6 @@
 // 單字怪獸 LinguaMon - Service Worker
 // 讓 App 可以安裝到手機，並在沒有網路時也能開啟（訓練場、小遊戲、競技場不需要 API）
-const VERSION = 'linguamon-v5';
+const VERSION = 'linguamon-v6';
 const SHELL = [
     './',
     './index.html',

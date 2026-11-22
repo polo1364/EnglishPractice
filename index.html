@@ -91,6 +91,8 @@
         .monster-wrap { position: relative; display: inline-block; line-height: 1; cursor: pointer; user-select: none; }
         .monster { display: inline-block; animation: bob 2.6s ease-in-out infinite; transform-origin: 50% 100%; filter: drop-shadow(0 10px 0 rgba(36, 51, 31, .08)); }
         .monster-wrap.hop .monster { animation: hop .5s; }
+        .monster-wrap.awake::before { content: ''; position: absolute; inset: -12%; border-radius: 50%; background: radial-gradient(circle, rgba(255, 214, 79, .75) 0%, rgba(255, 170, 60, .35) 45%, transparent 70%); animation: aura 2.4s ease-in-out infinite; pointer-events: none; }
+        @keyframes aura { 0%, 100% { transform: scale(.9); opacity: .55; } 50% { transform: scale(1.08); opacity: 1; } }
         .acc { position: absolute; left: 50%; transform: translateX(-50%); pointer-events: none; animation: bob 2.6s ease-in-out infinite; }
         .acc.head { top: -32%; }
         .acc.face { top: 22%; }
@@ -741,7 +743,7 @@ function defaultState() {
         progress: {}, dex: {},
         daily: { date: dateStr(), caught: 0, stages: 0, reviews: 0, claimed: [] },
         totals: { correct: 0, answered: 0 },
-        stats: {}, ach: {}, arena: { rank: 0, wins: 0, losses: 0, trophies: 0 }, forms: {},
+        stats: {}, ach: {}, arena: { rank: 0, wins: 0, losses: 0, trophies: 0 }, forms: {}, shards: 0,
         legacy: []
     };
 }
@@ -853,7 +855,25 @@ function monBattleStats(m) {
     const s = battleStats(levelInfo(m).lv, m.species), b = isFinal(m) ? branchOf(m) : '';
     if (b === 'guard') s.max = Math.round(s.max * 1.2);
     if (b === 'battle') s.atk = Math.round(s.atk * 1.15);
+    const k = 1 + AWAKEN_STAT * starsOf(m);
+    Object.keys(s).forEach(key => { s[key] = Math.round(s[key] * k); });
     return s;
+}
+// 覺醒：最終型態後用覺醒結晶升星（最多 5 星）。每星全能力 +6%，3 星技能次數 +1，5 星出現金色光環
+const AWAKEN_COST = [5, 10, 18, 28, 40], AWAKEN_STAT = 0.06;
+function starsOf(m) { return Math.min(AWAKEN_COST.length, m?.stars || 0); }
+function starText(m) { return '★'.repeat(starsOf(m)); }
+function gainShards(n, why) { S.shards = (S.shards || 0) + n; toast(`💎 覺醒結晶 +${n}（${why}）`, 'gold', 2800); }
+function awaken(id) {
+    const m = S.mons.find(x => x.id === id);
+    if (!m || !isFinal(m) || starsOf(m) >= AWAKEN_COST.length) return;
+    const cost = AWAKEN_COST[starsOf(m)];
+    if ((S.shards || 0) < cost) return toast(`覺醒結晶不夠，還差 ${cost - (S.shards || 0)} 顆`);
+    S.shards -= cost;
+    m.stars = starsOf(m) + 1;
+    playSound('levelup'); burst(); setTimeout(burst, 250);
+    save(); render(); closeModal(); openMon(id);
+    toast(`🌟 ${m.name} 覺醒到 ${m.stars} 星！${m.stars === 3 ? '技能次數 +1' : m.stars === 5 ? '散發出金色光環' : '全能力提升'}`, 'gold', 3200);
 }
 function nextForm(m = activeMon()) { const i = formIdx(levelInfo(m).lv); return i < 2 ? { ...speciesOf(m).forms[i + 1], lv: FORM_LV[i + 1] } : null; }
 
@@ -964,7 +984,7 @@ function monsterHTML(size = 120, interactive = true, m = activeMon()) {
     const face = SHOP.find(s => s.id === m.face);
     const accSize = Math.round(size * 0.42);
     return `<div class="text-center">
-        <div class="monster-wrap" ${interactive ? 'onclick="pokeMonster(this)"' : ''} style="font-size:${size}px">
+        <div class="monster-wrap${starsOf(m) >= 5 ? ' awake' : ''}" ${interactive ? 'onclick="pokeMonster(this)"' : ''} style="font-size:${size}px">
             <span class="monster" style="${emojiStyle(m)}">${formOf(m).e}</span>
             ${head ? accHTML(m, head, size, accSize) : ''}
             ${face ? accHTML(m, face, size, accSize) : ''}
@@ -1166,7 +1186,7 @@ function openMon(id) {
         <div class="text-xs font-black" style="color:${sp.color}">${sp.type} · ${sp.name}${m.shiny ? ' · ✨ 閃光色' : ''}</div>
         <div class="py-4" style="background:${sp.tint};border-radius:20px;margin-top:8px">${monsterHTML(96, false, m)}</div>
         <button class="border-0 bg-transparent text-2xl font-black mt-3" onclick="renameMonster('${m.id}')">${esc(m.name)} <span class="text-sm" style="color:var(--muted)">✏️</span></button>
-        <div class="text-sm" style="color:var(--muted)">Lv.${li.lv} ${formOf(m).n}</div>
+        <div class="text-sm" style="color:var(--muted)">Lv.${li.lv} ${formOf(m).n}${starsOf(m) ? ` <b style="color:var(--gold)">${starText(m)}</b>` : ''}</div>
         <div class="flex justify-center gap-2 mt-3 flex-wrap">
             <span class="pill" style="background:var(--purple-t);color:var(--purple-d)">${tr.icon} ${tr.name}：${tr.desc}</span>
             <span class="pill" style="background:var(--red-t);color:var(--red-d)">${'❤️'.repeat(hearts(m)) || '🤍'} 親密 ${m.affection}</span>
@@ -1192,6 +1212,14 @@ function openMon(id) {
                 ${on ? `<div class="text-[10px] font-black mt-1" style="color:${sp.color}">目前型態</div>` : can ? '<div class="text-[10px] font-black mt-1" style="color:var(--blue-d)">點一下切換</div>' : ''}
             </div>`; }).join('')}
         </div>
+        ${(() => {
+            const n = starsOf(m), max = AWAKEN_COST.length, cost = AWAKEN_COST[n], have = S.shards || 0;
+            const next = n >= max ? '已經覺醒到最高星' : `下一星：全能力 +${Math.round(AWAKEN_STAT * 100)}%${n === 2 ? '、技能次數 +1' : n === 4 ? '、金色光環' : ''}`;
+            return `<div class="mt-4 p-3 rounded-2xl text-left" style="background:#fff8dc;border:2px solid #f3dc8a">
+                <div class="flex items-center justify-between"><div class="font-black">🌟 覺醒 <span style="color:var(--gold);letter-spacing:1px">${'★'.repeat(n)}<span style="opacity:.3">${'★'.repeat(max - n)}</span></span></div><span class="pill" style="background:#fff;color:#8a6500">💎 ${have}</span></div>
+                <div class="text-xs mt-1" style="color:var(--muted)">${fi < 2 ? `Lv.${FORM_LV[2]} 進化到最終型態後開放。` : next + '。'}覺醒結晶來自訂正錯題、打倒魔王、競技場勝利、孵出已有的種族</div>
+                ${fi === 2 && n < max ? `<button class="btn orange w-full mt-2 sm" ${have >= cost ? '' : 'disabled'} onclick="awaken('${m.id}')">覺醒（💎 ${cost}）</button>` : ''}
+            </div>`; })()}
         <div class="flex gap-2 mt-5">
             <button class="btn white flex-1" onclick="closeModal()">關閉</button>
             ${m.id === activeMon().id ? '<button class="btn flex-[2]" disabled>目前的夥伴</button>' : `<button class="btn flex-[2]" onclick="setActive('${m.id}')">設為冒險夥伴</button>`}
@@ -1234,6 +1262,7 @@ function hatchEgg(id) {
     function revealHatch() {
         S.eggs.splice(i, 1);
         const m = newMon(egg.species);
+        if (S.mons.some(x => x.species === egg.species)) gainShards(5, '孵出已有的種族');
         S.mons.push(m); bumpStat('hatched');
         const isNew = !S.seen.includes(sp.id);
         if (isNew) S.seen.push(sp.id);
@@ -1507,7 +1536,7 @@ function srsHit(d, ok) {
     const now = Date.now();
     if (ok) {
         if (d.due <= now) { d.box = Math.min(5, d.box + 1); d.due = now + SRS_DAYS[d.box] * DAY; }
-        if (d.lastWrong && d.box >= 3 && !d.fixed) { d.fixed = true; S.stats.fixed = (S.stats.fixed || 0) + 1; }
+        if (d.lastWrong && d.box >= 3 && !d.fixed) { d.fixed = true; S.stats.fixed = (S.stats.fixed || 0) + 1; gainShards(2, '訂正了錯題'); }
     } else {
         d.box = 1; d.due = now; d.lastWrong = now; d.fixed = false;
     }
@@ -1557,7 +1586,7 @@ function renderHomeStats() {
     el.innerHTML = `
         <div class="text-center">
             <button onclick="openMon('${m.id}')" class="border-0 bg-transparent text-xl font-black">${esc(m.name)} <span class="text-sm" style="color:var(--muted)">ⓘ</span></button>
-            <div class="text-sm" style="color:var(--muted)">Lv.${li.lv} ${formOf(m).n} · ${traitOf(m).icon}${traitOf(m).name}${nf ? ` · Lv.${nf.lv} 進化` : ` · ${branchMeta(branchOf(m)).icon}${branchMeta(branchOf(m)).name}`}</div>
+            <div class="text-sm" style="color:var(--muted)">Lv.${li.lv} ${formOf(m).n} · ${traitOf(m).icon}${traitOf(m).name}${nf ? ` · Lv.${nf.lv} 進化` : ` · ${branchMeta(branchOf(m)).icon}${branchMeta(branchOf(m)).name}`}${starsOf(m) ? ` <b style="color:var(--gold)">${starText(m)}</b>` : ''}</div>
         </div>
         <div class="grid grid-cols-2 gap-x-3 gap-y-2.5 mt-3">
             ${bar('⭐', '經驗', li.cur, li.need, 'var(--gold)')}
@@ -2754,6 +2783,7 @@ function startBattle(i) {
         me: battleSide(monBattleStats(m), m.species, levelInfo(m).lv, m.name), foe: battleSide(battleStats(t.lv, t.sp), t.sp, t.lv, foeName), busy: false, log: `${t.name} 派出了 ${foeName}！` };
     G.play = { kind: 'arena', phase: 'battle', finished: false };
     openPlay(); hideSheet();
+    if (starsOf(m) >= 3) Object.keys(b.me.pp).forEach(k => { b.me.pp[k]++; });
     b.onKey = e => {
         if (G.modalOpen || !G.game || G.game.id !== 'battle') return;
         if (/^[1-6]$/.test(e.key)) { const btn = document.querySelector(`#battle-panel [data-k="${e.key}"]`); if (btn && !btn.disabled) btn.click(); }
@@ -2972,6 +3002,7 @@ function endBattle(win) {
             if (am.wins === BRANCH_NEED.battle && isFinal(am)) toast(`⚔️ ${am.name} 可以變成戰鬥型了！點名字切換型態`, 'gold', 3600);
         }
         S.arena.trophies += first ? 10 + b.i * 5 : 3;
+        gainShards(first ? 3 : 1, '競技場勝利');
         coins = first ? 20 + b.i * 10 : 8;
         xp = addMonsterXP(first ? 10 + b.i * 4 : 5);
         cheer(15); addAffection(2);
@@ -3445,6 +3476,7 @@ function finishRun() {
         const pr = prog(p.region.id);
         const first = !pr.boss;
         pr.boss = true;
+        gainShards(first ? 5 : 2, '打倒魔王');
         stars = p.mistakes === 0 ? 3 : p.mistakes === 1 ? 2 : 1;
         coins = first ? 80 : 25;
         xp = first ? 60 : 20;
