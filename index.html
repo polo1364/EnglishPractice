@@ -400,6 +400,25 @@ const SPECIES = [
       say: ['嘿嘿嘿～嚇到了嗎？', '我從外太空來學英文的', 'Boo! 👻'] }
 ];
 
+// 分支進化：Lv.10 時依養法走向不同的最終型態（forms[2] 是預設的「智慧型」），條件達成後可在夥伴頁自由切換
+const BRANCHES = [
+    { id: 'base',   name: '智慧型', icon: '📚', perk: '經驗 +10%',       why: '牠跟著你認真學習，長成了充滿智慧的樣子' },
+    { id: 'guard',  name: '守護型', icon: '🛡️', perk: '競技場 HP +20%',  why: '因為你們感情很好，牠想要守護你' },
+    { id: 'battle', name: '戰鬥型', icon: '⚔️', perk: '競技場攻擊 +15%', why: '因為牠在競技場身經百戰' }
+];
+const BRANCH_NEED = { guard: 80, battle: 5 };   // 守護型：親密度；戰鬥型：這隻怪獸的競技場勝場
+const ALT_FORMS = {
+    dragon: { guard: { e: '🐉', n: '守護聖龍' },   battle: { e: '🐉', n: '烈焰戰龍' } },
+    sea:    { guard: { e: '🐳', n: '珊瑚海靈' },   battle: { e: '🐳', n: '怒濤鯊王' } },
+    cat:    { guard: { e: '🐈', n: '月光靈貓' },   battle: { e: '🦁', n: '雷牙虎王' } },
+    bird:   { guard: { e: '🦅', n: '祝福鳳凰' },   battle: { e: '🦅', n: '疾風隼王' } },
+    bunny:  { guard: { e: '🐇', n: '月兔仙子' },   battle: { e: '🐇', n: '劍士兔' } },
+    bug:    { guard: { e: '🦋', n: '提燈螢火蟲' }, battle: { e: '🐞', n: '鋼角甲蟲' } },
+    dino:   { guard: { e: '🦕', n: '森林盾龍' },   battle: { e: '🦖', n: '迅爪龍' } },
+    ghost:  { guard: { e: '👻', n: '星光守護靈' }, battle: { e: '👾', n: '黑洞魅影' } }
+};
+SPECIES.forEach(s => { s.alt = ALT_FORMS[s.id]; });
+
 const TRAITS = [
     { id: 'glutton', name: '貪吃', icon: '🍽️', desc: '食物效果 +50%' },
     { id: 'lively',  name: '活潑', icon: '⚡', desc: '心情下降速度減半' },
@@ -599,6 +618,7 @@ function artChar(file, fallback) {
 }
 SPECIES.forEach(s => s.forms.forEach((f, i) => { f.e = artChar(`sp_${s.id}_${i + 1}`, f.e); }));
 REGIONS.forEach(r => { r.boss = artChar(`boss_${r.id}`, r.boss); });
+SPECIES.forEach(s => Object.entries(s.alt).forEach(([b, f]) => { f.e = artChar(`sp_${s.id}_${b}`, f.e); }));
 
 function fluentUrl(e) {
     if (ART[e]) return ART[e].src;
@@ -690,7 +710,7 @@ function defaultState() {
         progress: {}, dex: {},
         daily: { date: dateStr(), caught: 0, stages: 0, reviews: 0, claimed: [] },
         totals: { correct: 0, answered: 0 },
-        stats: {}, ach: {}, arena: { rank: 0, wins: 0, losses: 0, trophies: 0 },
+        stats: {}, ach: {}, arena: { rank: 0, wins: 0, losses: 0, trophies: 0 }, forms: {},
         legacy: []
     };
 }
@@ -779,7 +799,31 @@ function levelInfo(m = activeMon()) {
     return { lv, cur: rest, need: xpToNext(lv) };
 }
 function formIdx(lv) { return lv >= FORM_LV[2] ? 2 : lv >= FORM_LV[1] ? 1 : 0; }
-function formOf(m = activeMon()) { return speciesOf(m).forms[formIdx(levelInfo(m).lv)]; }
+function isFinal(m) { return formIdx(levelInfo(m).lv) === 2; }
+function branchOf(m) { return m && isFinal(m) && speciesOf(m).alt[m.branch] ? m.branch : 'base'; }
+function branchMeta(id) { return BRANCHES.find(b => b.id === id) || BRANCHES[0]; }
+function branchScore(m, b) { return b === 'guard' ? (m.affection || 0) / BRANCH_NEED.guard : b === 'battle' ? (m.wins || 0) / BRANCH_NEED.battle : 1; }
+function pickBranch(m) { const g = branchScore(m, 'guard'), w = branchScore(m, 'battle'); return Math.max(g, w) < 1 ? 'base' : w > g ? 'battle' : 'guard'; }
+function branchForm(sp, b) { return b === 'base' ? sp.forms[2] : sp.alt[b]; }
+function markForm(m) { if (isFinal(m)) S.forms[`${m.species}_${branchOf(m)}`] = 1; }
+function formOf(m = activeMon()) { const sp = speciesOf(m), i = formIdx(levelInfo(m).lv); return i === 2 ? branchForm(sp, branchOf(m)) : sp.forms[i]; }
+function setBranch(id, b) {
+    const m = S.mons.find(x => x.id === id);
+    if (!m || !isFinal(m) || branchScore(m, b) < 1 || branchOf(m) === b) return;
+    const old = formOf(m);
+    m.branch = b;
+    if (m.name === old.n) m.name = formOf(m).n;
+    markForm(m);
+    playSound('levelup'); burst();
+    save(); render(); closeModal(); openMon(id);
+    toast(`${formOf(m).e} 變成${branchMeta(b).name}的${formOf(m).n}了！`, 'good', 3000);
+}
+function monBattleStats(m) {
+    const s = battleStats(levelInfo(m).lv), b = isFinal(m) ? branchOf(m) : '';
+    if (b === 'guard') s.max = Math.round(s.max * 1.2);
+    if (b === 'battle') s.atk = Math.round(s.atk * 1.15);
+    return s;
+}
 function nextForm(m = activeMon()) { const i = formIdx(levelInfo(m).lv); return i < 2 ? { ...speciesOf(m).forms[i + 1], lv: FORM_LV[i + 1] } : null; }
 
 function satiety(m = activeMon()) {
@@ -804,12 +848,14 @@ function addAffection(n, m = activeMon()) {
     } else if (Math.floor(m.affection / 20) > Math.floor(before / 20)) {
         toast(`💞 和 ${m.name} 的親密度升到 ${hearts(m)} 顆心！`, 'good');
     }
+    if (before < BRANCH_NEED.guard && m.affection >= BRANCH_NEED.guard && isFinal(m)) toast(`🛡️ ${m.name} 可以變成守護型了！點名字切換型態`, 'gold', 3600);
 }
 
 // 經驗加成：學霸 +15%、心情好 +20%、肚子餓減半
 function xpMultiplier(m = activeMon()) {
     let k = 1;
     if (m?.trait === 'smart') k *= 1.15;
+    if (m && isFinal(m) && branchOf(m) === 'base') k *= 1.1;
     if (mood(m) >= 70) k *= 1.2;
     if (satiety(m) < 20) k *= 0.5;
     return k;
@@ -826,7 +872,9 @@ function addMonsterXP(n) {
         if (fa !== fb) {
             const oldName = m.name;
             // 沒改過名字的怪獸，名字跟著型態一起進化
-            if (oldName === speciesOf(m).forms[fb].n) m.name = speciesOf(m).forms[fa].n;
+            if (fa === 2) m.branch = pickBranch(m);
+            if (oldName === speciesOf(m).forms[fb].n) m.name = formOf(m).n;
+            markForm(m);
             G.modalQueue.push(() => evolutionModal(m, fb, fa, oldName));
         }
         else G.modalQueue.push(() => levelUpModal(m, after.lv));
@@ -850,13 +898,25 @@ const ACC_POS = {
     ghost:  [[43, 50, 38, 12, 46, 23, 60], [43, 53, 34, 9, 50, 17, 60], [41, 38, 32, 0, 40, 18, 50]]
 };
 // 每種配件的大小與擺法：s = 相對眼寬（臉部）或頭寬（頭部）的比例；up = 往上抬多少個自身高度；dx/dy = 以頭寬／眼寬為單位的位移
+// 分支最終型態的錨點（格式同上）
+const ACC_ALT = {
+    dragon: { guard: [41, 42, 30, 0, 42, 26, 38],  battle: [39, 47, 28, -5, 40, 31, 32] },
+    sea:    { guard: [24, 43, 32, 3, 27, 18, 42],  battle: [34, 54, 34, -6, 38, 31, 44] },
+    cat:    { guard: [34, 45, 34, 4, 37, 22, 46],  battle: [37, 49, 40, -4, 36, 26, 50] },
+    bird:   { guard: [41, 36, 32, -3, 42, 15, 44], battle: [32, 55, 26, -8, 36, 32, 36] },
+    bunny:  { guard: [41, 39, 28, 12, 44, 20, 40], battle: [41, 54, 32, -3, 42, 32, 46] },
+    bug:    { guard: [35, 43, 32, 10, 41, 21, 46], battle: [47, 52, 34, -9, 55, 30, 44] },
+    dino:   { guard: [27, 45, 32, 0, 28, 24, 44],  battle: [26, 35, 36, -8, 33, 11, 44] },
+    ghost:  { guard: [36, 41, 32, 10, 40, 19, 46], battle: [42, 45, 36, 0, 42, 23, 44] }
+};
 const ACC_FIT = {
     glasses: { s: 1.2 }, shades: { s: 1.2 }, scarf: { s: .8, dy: .55 },
     crown: { s: .6, up: .38 }, tophat: { s: .7, up: .3 }, grad: { s: .8, up: .25 }, cap: { s: .8, up: .05 },
     bow: { s: .5, up: .2 }, flower: { s: .4, up: .1, dx: .3 }, phones: { s: 1.1, up: -.3 }
 };
 function accHTML(m, it, size, accSize) {
-    const p = ACC_POS[m.species]?.[formIdx(levelInfo(m).lv)], f = ACC_FIT[it.id];
+    const br = branchOf(m), f = ACC_FIT[it.id];
+    const p = br === 'base' ? ACC_POS[m.species]?.[formIdx(levelInfo(m).lv)] : ACC_ALT[m.species]?.[br];
     if (!p || !f) return `<span class="acc ${it.slot}" style="font-size:${accSize}px">${it.emoji}</span>`;
     const [ex, ey, ew, rot, hx, hy, hw] = p, k = size * 1.15 / 100, isFace = it.slot === 'face';
     const fs = (isFace ? ew : hw) * k * f.s;
@@ -1078,10 +1138,24 @@ function openMon(id) {
             <span class="pill" style="background:var(--purple-t);color:var(--purple-d)">${tr.icon} ${tr.name}：${tr.desc}</span>
             <span class="pill" style="background:var(--red-t);color:var(--red-d)">${'❤️'.repeat(hearts(m)) || '🤍'} 親密 ${m.affection}</span>
         </div>
-        <div class="flex items-end justify-center gap-3 mt-5">${sp.forms.map((f, i) => `
-            <div class="text-center"><div class="text-4xl" style="${i <= fi ? emojiStyle(m) : 'filter:brightness(0);opacity:.2'}">${f.e}</div>
+        <div class="flex items-end justify-center gap-3 mt-5">${sp.forms.map((f0, i) => { const f = i === 2 && fi === 2 ? formOf(m) : f0; return `
+            <div class="text-center"><div class="text-4xl" style="${i <= fi ? emojiStyle(m) : 'filter:brightness(0);opacity:.2'}">${i === 2 && fi < 2 ? '❓' : f.e}</div>
             <div class="text-xs mt-1" style="color:${i <= fi ? 'var(--ink)' : 'var(--muted)'}">${i <= fi ? f.n : '???'}</div><div class="text-[10px]" style="color:var(--muted)">Lv.${FORM_LV[i]}</div></div>
-            ${i < 2 ? '<div class="pb-6" style="color:var(--muted)">→</div>' : ''}`).join('')}
+            ${i < 2 ? '<div class="pb-6" style="color:var(--muted)">→</div>' : ''}`; }).join('')}
+        </div>
+        <div class="text-xs font-black mt-5 mb-2" style="color:var(--muted)">最終型態有 3 條路線 · ${fi === 2 ? '達成條件就能自由切換' : `Lv.${FORM_LV[2]} 時依養法決定`}</div>
+        <div class="grid grid-cols-3 gap-2">${BRANCHES.map(b => {
+            const f = branchForm(sp, b.id), ok = branchScore(m, b.id) >= 1, on = fi === 2 && branchOf(m) === b.id, can = fi === 2 && ok && !on;
+            const known = on || S.forms[`${sp.id}_${b.id}`];
+            const prog = b.id === 'guard' ? `親密 ${Math.min(m.affection, BRANCH_NEED.guard)}/${BRANCH_NEED.guard}` : b.id === 'battle' ? `競技場 ${Math.min(m.wins || 0, BRANCH_NEED.battle)}/${BRANCH_NEED.battle} 勝` : '預設路線';
+            return `<div ${can ? `onclick="setBranch('${m.id}','${b.id}')"` : ''} style="border:2px solid ${on ? sp.color : 'var(--line)'};background:${on ? sp.tint : '#fff'};border-radius:14px;padding:8px 2px;${can ? 'cursor:pointer' : ''}">
+                <div class="text-4xl" style="${known ? emojiStyle(m) : 'filter:brightness(0);opacity:.2'}">${f.e}</div>
+                <div class="text-xs font-black mt-1">${b.icon} ${b.name}</div>
+                <div class="text-[10px]" style="color:var(--muted)">${known ? f.n : '???'}</div>
+                <div class="text-[10px] font-black" style="color:${ok ? 'var(--green-d)' : 'var(--muted)'}">${ok && b.id !== 'base' ? '✓ ' : ''}${prog}</div>
+                <div class="text-[10px]" style="color:var(--muted)">${b.perk}</div>
+                ${on ? `<div class="text-[10px] font-black mt-1" style="color:${sp.color}">目前型態</div>` : can ? '<div class="text-[10px] font-black mt-1" style="color:var(--blue-d)">點一下切換</div>' : ''}
+            </div>`; }).join('')}
         </div>
         <div class="flex gap-2 mt-5">
             <button class="btn white flex-1" onclick="closeModal()">關閉</button>
@@ -1448,7 +1522,7 @@ function renderHomeStats() {
     el.innerHTML = `
         <div class="text-center">
             <button onclick="openMon('${m.id}')" class="border-0 bg-transparent text-xl font-black">${esc(m.name)} <span class="text-sm" style="color:var(--muted)">ⓘ</span></button>
-            <div class="text-sm" style="color:var(--muted)">Lv.${li.lv} ${formOf(m).n} · ${traitOf(m).icon}${traitOf(m).name}${nf ? ` · Lv.${nf.lv} 進化` : ' · 最終型態'}</div>
+            <div class="text-sm" style="color:var(--muted)">Lv.${li.lv} ${formOf(m).n} · ${traitOf(m).icon}${traitOf(m).name}${nf ? ` · Lv.${nf.lv} 進化` : ` · ${branchMeta(branchOf(m)).icon}${branchMeta(branchOf(m)).name}`}</div>
         </div>
         <div class="grid grid-cols-2 gap-x-3 gap-y-2.5 mt-3">
             ${bar('⭐', '經驗', li.cur, li.need, 'var(--gold)')}
@@ -1635,14 +1709,17 @@ function renderDex() {
     if (G.dexMode === 'mons') {
         const best = {};
         S.mons.forEach(x => { best[x.species] = Math.max(best[x.species] ?? -1, formIdx(levelInfo(x).lv)); });
-        const found = SPECIES.reduce((a, s) => a + (best[s.id] ?? -1) + 1, 0);
+        S.mons.forEach(markForm);
+        const alts = s => ['base', 'guard', 'battle'].filter(b => S.forms[`${s.id}_${b}`]);
+        const found = SPECIES.reduce((a, s) => a + Math.min(best[s.id] ?? -1, 1) + 1 + alts(s).length, 0);
         $('tab-dex').innerHTML = `<div class="mt-1">${toggle}</div>
-        <div class="card p-4 mb-3 flex items-center justify-between"><div><div class="font-black">已發現型態</div><div class="text-xs" style="color:var(--muted)">把每族都養到最終型態吧！</div></div><div class="text-2xl font-black">${found}<span class="text-sm" style="color:var(--muted)">/${SPECIES.length * 3}</span></div></div>
+        <div class="card p-4 mb-3 flex items-center justify-between"><div><div class="font-black">已發現型態</div><div class="text-xs" style="color:var(--muted)">把每族都養到最終型態吧！</div></div><div class="text-2xl font-black">${found}<span class="text-sm" style="color:var(--muted)">/${SPECIES.length * 5}</span></div></div>
         <div class="space-y-3">${SPECIES.map(s => {
             const b = best[s.id] ?? -1;
-            return `<div class="card p-3 flex items-center gap-3" style="${b >= 0 ? `background:${s.tint}` : ''}">
-                <div class="w-24 shrink-0"><div class="font-black text-sm">${b >= 0 ? s.name : '???'}</div><div class="text-xs" style="color:${b >= 0 ? s.color : 'var(--muted)'}">${b >= 0 ? s.type : (s.rare ? '稀有種族' : '尚未發現')}</div></div>
-                <div class="flex-1 grid grid-cols-3 gap-1 text-center">${s.forms.map((f, i) => `<div><div class="text-3xl" style="${i <= b ? '' : 'filter:brightness(0);opacity:.15'}">${f.e}</div><div class="text-[10px]" style="color:var(--muted)">${i <= b ? f.n : `Lv.${FORM_LV[i]}`}</div></div>`).join('')}</div>
+            const cells = [...s.forms.map((f, i) => [f, i < 2 ? i <= b : alts(s).includes('base'), `Lv.${FORM_LV[i]}`]), ...['guard', 'battle'].map(k => [s.alt[k], alts(s).includes(k), branchMeta(k).icon + branchMeta(k).name])];
+            return `<div class="card p-3" style="${b >= 0 ? `background:${s.tint}` : ''}">
+                <div class="flex items-baseline gap-2 mb-2"><div class="font-black text-sm">${b >= 0 ? s.name : '???'}</div><div class="text-xs" style="color:${b >= 0 ? s.color : 'var(--muted)'}">${b >= 0 ? s.type : (s.rare ? '稀有種族' : '尚未發現')}</div></div>
+                <div class="grid grid-cols-5 gap-1 text-center">${cells.map(([f, ok, hint]) => `<div><div class="text-3xl" style="${ok ? '' : 'filter:brightness(0);opacity:.15'}">${f.e}</div><div class="text-[10px]" style="color:var(--muted)">${ok ? f.n : hint}</div></div>`).join('')}</div>
             </div>`; }).join('')}</div>`;
         return;
     }
@@ -1867,7 +1944,7 @@ function levelUpModal(m, lv) {
 
 function evolutionModal(m, fromIdx, toIdx, oldName = m.name) {
     const sp = speciesOf(m);
-    const from = sp.forms[fromIdx], to = sp.forms[toIdx];
+    const from = sp.forms[fromIdx], to = toIdx === 2 ? formOf(m) : sp.forms[toIdx], br = branchMeta(branchOf(m));
     if (!S.seen.includes(sp.id)) S.seen.push(sp.id);
     playSound('pop');
     showModal(`<div class="card p-7 modal text-center">
@@ -1882,7 +1959,7 @@ function evolutionModal(m, fromIdx, toIdx, oldName = m.name) {
         mon.textContent = to.e;
         $('evo-title').textContent = '✨ 進化了！ ✨';
         $('evo-body').innerHTML = `<div class="text-3xl font-black">${esc(oldName)} 變成了${to.n}！</div>
-            <p class="mt-2" style="color:var(--muted)">${toIdx === 2 ? '這是最終型態！怪獸圖鑑又亮起一格' : `繼續培養，Lv.${FORM_LV[2]} 還會再進化`}</p>
+            <p class="mt-2" style="color:var(--muted)">${toIdx === 2 ? `${br.icon} ${br.name}最終型態（${br.perk}）<br>${br.why}。${br.id === 'base' ? '親密度到 80 或帶牠贏 5 場競技場，還能解鎖其他型態' : '點牠的名字可以切換型態'}` : `繼續培養，Lv.${FORM_LV[2]} 的最終型態會依養法改變`}</p>
             <button class="btn purple w-full mt-5" onclick="closeModal()">好帥</button>`;
         playSound('levelup');
         burst(); setTimeout(burst, 250);
@@ -2590,7 +2667,7 @@ function openArena() {
         <div class="card p-4 flex items-center gap-3 arena-me">
             <div class="text-5xl" style="${emojiStyle(m)}">${formOf(m).e}</div>
             <div class="flex-1"><div class="font-black text-lg">${esc(m.name)} <span class="text-sm" style="color:var(--muted)">Lv.${li.lv}</span></div>
-                <div class="text-xs" style="color:var(--muted)">屬性 ${el.e}${el.n}・HP ${battleStats(li.lv).max}・攻擊 ${battleStats(li.lv).atk}・戰績 ${S.arena.wins} 勝 ${S.arena.losses} 敗</div>
+                <div class="text-xs" style="color:var(--muted)">屬性 ${el.e}${el.n}・HP ${monBattleStats(m).max}・攻擊 ${monBattleStats(m).atk}・戰績 ${S.arena.wins} 勝 ${S.arena.losses} 敗</div>
                 <div class="text-xs mt-1" style="color:var(--muted)">${el.e}${el.n} 剋 ${el.beats.map(b => ELEM[b].e + ELEM[b].n).join('、')}</div></div>
         </div>
         <p class="text-xs my-3" style="color:var(--muted)">💡 答對單字題才能出招！屬性技威力大但題目較難；親密度越高越容易爆擊。換夥伴可以到小屋的牧場。</p>
@@ -2615,7 +2692,7 @@ function startBattle(i) {
     stopGame();
     let words = Object.values(S.dex).filter(d => d.mean);
     if (words.length < 4) words = [...words, ...BASIC_WORDS.filter(b => !words.some(x => x.word === b.word))];
-    const me = battleStats(levelInfo(m).lv), foe = battleStats(t.lv);
+    const me = monBattleStats(m), foe = battleStats(t.lv);
     const b = G.game = { id: 'battle', i, t, words, heals: 2,
         me: { ...me, hp: me.max, sp: m.species }, foe: { ...foe, hp: foe.max, sp: t.sp }, busy: false, log: `${t.name} 派出了 ${SPECIES.find(s => s.id === t.sp).forms[formIdx(t.lv)].n}！` };
     G.play = { kind: 'arena', phase: 'battle', finished: false };
@@ -2794,6 +2871,11 @@ function endBattle(win) {
         const first = b.i === S.arena.rank;
         if (first) S.arena.rank = Math.min(TRAINERS.length, S.arena.rank + 1);
         S.arena.wins++;
+        const am = activeMon();
+        if (am) {
+            am.wins = (am.wins || 0) + 1;
+            if (am.wins === BRANCH_NEED.battle && isFinal(am)) toast(`⚔️ ${am.name} 可以變成戰鬥型了！點名字切換型態`, 'gold', 3600);
+        }
         S.arena.trophies += first ? 10 + b.i * 5 : 3;
         coins = first ? 20 + b.i * 10 : 8;
         xp = addMonsterXP(first ? 10 + b.i * 4 : 5);
