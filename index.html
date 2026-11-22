@@ -520,7 +520,11 @@ const FURN = [
     { id: 'plant',  e: '🪴', name: '小盆栽',   price: 40 },  { id: 'balloon', e: '🎈', name: '氣球',     price: 50 },
     { id: 'books',  e: '📚', name: '單字書堆', price: 60 },  { id: 'bear',    e: '🧸', name: '小熊玩偶', price: 80 },
     { id: 'guitar', e: '🎸', name: '吉他',     price: 100 }, { id: 'sofa',    e: '🛋️', name: '軟沙發',   price: 120 },
-    { id: 'tent',   e: '⛺', name: '小帳篷',   price: 150 }, { id: 'trophy',  e: '🏆', name: '冠軍獎盃', price: 200 }
+    { id: 'tent',   e: '⛺', name: '小帳篷',   price: 150 }, { id: 'trophy',  e: '🏆', name: '冠軍獎盃', price: 200 },
+    // 以下是圖鑑收集獎勵，商店買不到
+    { id: 'circus',  e: '🎪', name: '馬戲團',   reward: true }, { id: 'rainbow', e: '🌈', name: '彩虹',     reward: true },
+    { id: 'scope',   e: '🔭', name: '望遠鏡',   reward: true }, { id: 'crystal', e: '🔮', name: '水晶球',   reward: true },
+    { id: 'statue',  e: '🗽', name: '紀念雕像', reward: true }
 ];
 const FURN_MAX = 3;
 const FURN_POS = ['left:0;top:0;font-size:34px', 'right:2%;top:0;font-size:34px', 'left:0;bottom:6px;font-size:46px'];
@@ -597,8 +601,76 @@ const ACHIEVEMENTS = [
     { id: 'rich',  icon: '💰', name: '小富翁',     desc: '同時擁有 1000 金幣',        v: () => S.coins, goal: 1000, coins: 0 }
 ];
 function bumpStat(k, n = 1) { S.stats[k] = (S.stats[k] || 0) + n; }
+// 圖鑑收集獎勵：達成後到怪獸圖鑑手動領取。獎勵有金幣、覺醒結晶、專屬擺設（furn）與稱號（title）
+function formsFound(s) {
+    S.mons.forEach(markForm);
+    const best = Math.max(-1, ...S.mons.filter(x => x.species === s.id).map(x => formIdx(levelInfo(x).lv)));
+    return Math.min(best, 1) + 1 + ['base', 'guard', 'battle'].filter(b => S.forms[`${s.id}_${b}`]).length;
+}
+function totalForms() { return SPECIES.reduce((a, s) => a + formsFound(s), 0); }
+function collectList() {
+    const words = () => Object.keys(S.dex).length;
+    return [
+        ...SPECIES.map(s => ({ id: 'all_' + s.id, icon: s.forms[2].e, name: `${s.name}全收集`, desc: `收齊${s.name}的 5 個型態`, v: () => formsFound(s), goal: 5, r: { coins: 100, shards: 5 } })),
+        { id: 'forms10', icon: '📗', name: '型態收藏 10', desc: '發現 10 個怪獸型態', v: totalForms, goal: 10, r: { coins: 80, furn: 'circus' } },
+        { id: 'forms25', icon: '📘', name: '型態收藏 25', desc: '發現 25 個怪獸型態', v: totalForms, goal: 25, r: { shards: 10, title: '怪獸收藏家' } },
+        { id: 'forms40', icon: '📕', name: '型態全制霸', desc: '發現全部 40 個怪獸型態', v: totalForms, goal: 40, r: { shards: 20, furn: 'statue', title: '怪獸博士' } },
+        { id: 'allsp',   icon: '🌈', name: '八族齊聚',   desc: '8 個種族都養過', v: () => new Set(S.mons.map(m => m.species)).size, goal: 8, r: { furn: 'rainbow', title: '種族大師' } },
+        { id: 'shiny',   icon: '✨', name: '閃光夥伴',   desc: '擁有 1 隻閃光色怪獸', v: () => S.mons.filter(m => m.shiny).length, goal: 1, r: { shards: 3, title: '閃光獵人' } },
+        { id: 'star5',   icon: '🌟', name: '完全覺醒',   desc: '把 1 隻怪獸覺醒到 5 星', v: () => Math.max(0, ...S.mons.map(starsOf)), goal: 5, r: { furn: 'crystal', title: '覺醒者' } },
+        { id: 'ate50',   icon: '😋', name: '小小美食家', desc: '1 隻怪獸吃掉 50 個愛吃的單字', v: () => Math.max(0, ...S.mons.map(ateCount)), goal: 50, r: { shards: 5, title: '美食家' } },
+        { id: 'word100', icon: '📖', name: '單字 100',   desc: '圖鑑收集 100 個單字', v: words, goal: 100, r: { shards: 5, title: '單字新星' } },
+        { id: 'word300', icon: '📚', name: '單字 300',   desc: '圖鑑收集 300 個單字', v: words, goal: 300, r: { shards: 10, furn: 'scope' } },
+        { id: 'word600', icon: '🎓', name: '單字 600',   desc: '圖鑑收集 600 個單字', v: words, goal: 600, r: { shards: 20, title: '單字大師' } }
+    ];
+}
+function rewardText(r) {
+    return [r.coins && `🪙 ${r.coins}`, r.shards && `💎 ${r.shards}`, r.furn && `擺設 ${FURN.find(f => f.id === r.furn).e}${FURN.find(f => f.id === r.furn).name}`, r.title && `稱號「${r.title}」`].filter(Boolean).join('、');
+}
+function collectReady() { return collectList().filter(c => !S.collect[c.id] && c.v() >= c.goal).length; }
+function openCollect() {
+    const list = collectList();
+    const row = c => {
+        const v = Math.min(c.v(), c.goal), done = S.collect[c.id], ready = !done && v >= c.goal;
+        return `<div class="card p-3 flex items-center gap-3" style="${ready ? 'border-color:var(--orange);background:var(--orange-t)' : done ? 'opacity:.6' : ''}">
+            <div class="text-3xl">${c.icon}</div>
+            <div class="flex-1 min-w-0"><div class="font-black text-sm">${c.name}</div><div class="text-[11px]" style="color:var(--muted)">${c.desc}・${v}/${c.goal}</div>
+                <div class="text-[11px] font-black" style="color:var(--orange-d)">🎁 ${rewardText(c.r)}</div>
+                ${done ? '' : `<div class="bar mt-1" style="height:5px"><i style="width:${v / c.goal * 100}%;background:var(--orange)"></i></div>`}</div>
+            ${done ? '<span class="pill" style="background:var(--green-t);color:var(--green-d)">✓ 已領</span>' : ready ? `<button class="btn sm orange" onclick="claimCollect('${c.id}')">領取</button>` : ''}
+        </div>`; };
+    const order = c => S.collect[c.id] ? 2 : c.v() >= c.goal ? 0 : 1;
+    showModal(`<div class="card p-5 modal">
+        <div class="flex items-center justify-between"><h3 class="text-xl font-black">🎁 收集獎勵</h3><span class="pill" style="background:var(--green-t);color:var(--green-d)">${list.filter(c => S.collect[c.id]).length}/${list.length}</span></div>
+        ${S.titles.length ? `<div class="mt-3 p-3 rounded-2xl" style="background:var(--purple-t)"><div class="text-xs font-black mb-2" style="color:var(--purple-d)">🏷️ 稱號（點一下換上，會顯示在小屋）</div>
+            <div class="flex flex-wrap gap-2">${['', ...S.titles].map(t => `<button class="pill" style="background:${S.title === t ? 'var(--purple)' : '#fff'};color:${S.title === t ? '#fff' : 'var(--purple-d)'};border:2px solid var(--purple)" onclick="setTitle('${t}')">${t || '不顯示'}</button>`).join('')}</div></div>` : ''}
+        <div class="space-y-2 mt-3">${[...list].sort((a, b) => order(a) - order(b)).map(row).join('')}</div>
+        <button class="btn white w-full mt-4" onclick="closeModal(); render()">關閉</button>
+    </div>`);
+}
+function claimCollect(id) {
+    const c = collectList().find(x => x.id === id);
+    if (!c || S.collect[id] || c.v() < c.goal) return;
+    S.collect[id] = Date.now();
+    const r = c.r;
+    if (r.coins) S.coins += r.coins;
+    if (r.shards) S.shards = (S.shards || 0) + r.shards;
+    if (r.furn && !S.furn.includes(r.furn)) S.furn.push(r.furn);
+    if (r.title && !S.titles.includes(r.title)) { S.titles.push(r.title); if (!S.title) S.title = r.title; }
+    playSound('win'); burst();
+    save(); openCollect();
+    toast(`🎁 ${c.name}：${rewardText(r)}`, 'gold', 3600);
+}
+function setTitle(t) { S.title = t; save(); openCollect(); }
+
 function checkAchievements() {
     if (!S.mons?.length) return;
+    for (const c of collectList()) {
+        if (S.collect[c.id] || S.collectNote[c.id]) continue;
+        let v = 0;
+        try { v = c.v(); } catch {}
+        if (v >= c.goal) { S.collectNote[c.id] = 1; setTimeout(() => toast(`🎁 收集獎勵可以領了：${c.name}（到怪獸圖鑑領取）`, 'gold', 3600), 600); }
+    }
     for (const a of ACHIEVEMENTS) {
         if (S.ach[a.id]) continue;
         let v = 0;
@@ -796,7 +868,7 @@ function defaultState() {
         progress: {}, dex: {},
         daily: { date: dateStr(), caught: 0, stages: 0, reviews: 0, claimed: [] },
         totals: { correct: 0, answered: 0 },
-        stats: {}, ach: {}, arena: { rank: 0, wins: 0, losses: 0, trophies: 0 }, forms: {}, shards: 0, trips: [], furn: [], placed: [],
+        stats: {}, ach: {}, arena: { rank: 0, wins: 0, losses: 0, trophies: 0 }, forms: {}, shards: 0, trips: [], furn: [], placed: [], collect: {}, collectNote: {}, titles: [], title: '',
         legacy: []
     };
 }
@@ -817,7 +889,7 @@ function migrate(saved) {
     if (!saved || typeof saved !== 'object') return null;
     if (saved.v === 3) {
         return { ...base, ...saved, foods: { ...base.foods, ...saved.foods }, daily: { ...base.daily, ...saved.daily }, totals: { ...base.totals, ...saved.totals },
-            stats: { ...saved.stats }, ach: { ...saved.ach }, arena: { ...base.arena, ...saved.arena } };
+            stats: { ...saved.stats }, ach: { ...saved.ach }, arena: { ...base.arena, ...saved.arena }, collect: { ...saved.collect }, collectNote: { ...saved.collectNote } };
     }
     if (saved.v === 2) {
         const m = saved.monster || {};
@@ -1798,6 +1870,7 @@ function renderHomeStats() {
     const bar = (icon, label, v, max, color) => `<div><div class="flex justify-between text-xs mb-1"><span>${icon} ${label}</span><span style="color:var(--muted)">${v}${max === 100 ? '%' : '/' + max}</span></div><div class="bar" style="height:11px"><i style="width:${Math.min(100, v / max * 100)}%;background:${color}"></i></div></div>`;
     el.innerHTML = `
         <div class="text-center">
+            ${S.title ? `<div><span class="pill text-[11px]" style="background:var(--purple-t);color:var(--purple-d)">🏷️ ${esc(S.title)}</span></div>` : ''}
             <button onclick="openMon('${m.id}')" class="border-0 bg-transparent text-xl font-black">${esc(m.name)} <span class="text-sm" style="color:var(--muted)">ⓘ</span></button>
             <div class="text-sm" style="color:var(--muted)">Lv.${li.lv} ${formOf(m).n} · ${traitOf(m).icon}${traitOf(m).name}${nf ? ` · Lv.${nf.lv} 進化` : ` · ${branchMeta(branchOf(m)).icon}${branchMeta(branchOf(m)).name}`}${starsOf(m) ? ` <b style="color:var(--gold)">${starText(m)}</b>` : ''}</div>
         </div>
@@ -1993,7 +2066,11 @@ function renderDex() {
         S.mons.forEach(markForm);
         const alts = s => ['base', 'guard', 'battle'].filter(b => S.forms[`${s.id}_${b}`]);
         const found = SPECIES.reduce((a, s) => a + Math.min(best[s.id] ?? -1, 1) + 1 + alts(s).length, 0);
+        const ready = collectReady();
         $('tab-dex').innerHTML = `<div class="mt-1">${toggle}</div>
+        <button class="card p-4 mb-3 flex items-center gap-3 w-full text-left" style="${ready ? 'border-color:var(--orange);background:var(--orange-t)' : ''}" onclick="openCollect()">
+            <div class="text-3xl">🎁</div><div class="flex-1"><div class="font-black">收集獎勵</div><div class="text-xs" style="color:${ready ? 'var(--orange-d)' : 'var(--muted)'}">${ready ? `有 ${ready} 個獎勵可以領取！` : '收齊型態、單字可以拿稱號和專屬擺設'}</div></div>
+            <div class="font-black" style="color:var(--muted)">${Object.keys(S.collect).length}/${collectList().length} ›</div></button>
         <div class="card p-4 mb-3 flex items-center justify-between"><div><div class="font-black">已發現型態</div><div class="text-xs" style="color:var(--muted)">把每族都養到最終型態吧！</div></div><div class="text-2xl font-black">${found}<span class="text-sm" style="color:var(--muted)">/${SPECIES.length * 5}</span></div></div>
         <div class="space-y-3">${SPECIES.map(s => {
             const b = best[s.id] ?? -1;
@@ -2287,7 +2364,7 @@ function openShop() {
             const owned = S.furn.includes(f.id), on = S.placed.includes(f.id);
             return `<button class="card p-2 text-center" style="${on ? 'border-color:var(--green);background:var(--green-t)' : ''}" onclick="furnItem('${f.id}')">
                 <div class="text-3xl">${f.e}</div><div class="font-black text-[11px] mt-1">${f.name}</div>
-                <div class="text-[10px] mt-0.5" style="color:${on ? 'var(--green-d)' : 'var(--muted)'}">${on ? '擺放中' : owned ? '點擊擺放' : `🪙 ${f.price}`}</div></button>`; }).join('')}</div>
+                <div class="text-[10px] mt-0.5" style="color:${on ? 'var(--green-d)' : 'var(--muted)'}">${on ? '擺放中' : owned ? '點擊擺放' : f.reward ? '🎁 收集獎勵' : `🪙 ${f.price}`}</div></button>`; }).join('')}</div>
             <p class="text-xs mt-2 text-center" style="color:var(--muted)">小屋最多擺 ${FURN_MAX} 件（目前 ${S.placed.length} 件），每擺一件怪獸的心情下降慢 5%</p>`;
     } else {
         body = `<div class="text-center p-4 rounded-2xl" style="background:var(--orange-t)">
@@ -2328,6 +2405,7 @@ function buyBg(id) {
 function furnItem(id) {
     const f = FURN.find(x => x.id === id);
     if (!f) return;
+    if (!S.furn.includes(id) && f.reward) return toast('這件是圖鑑的收集獎勵，到「圖鑑 › 怪獸圖鑑 › 收集獎勵」看看條件');
     if (!S.furn.includes(id)) { if (!spend(f.price)) return; S.furn.push(id); toast(`買到擺設：${f.name}`, 'good'); }
     if (S.placed.includes(id)) S.placed = S.placed.filter(x => x !== id);
     else if (S.placed.length >= FURN_MAX) return toast(`小屋最多擺 ${FURN_MAX} 件，先收起一件吧`);
