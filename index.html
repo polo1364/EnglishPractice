@@ -711,9 +711,11 @@ function checkTips() {
             <div class="flex gap-2 mt-5"><button class="btn white flex-1" onclick="closeModal()">知道了</button>${t.act ? `<button class="btn flex-1" onclick="closeModal(); ${t.act[1]}">${t.act[0]}</button>` : ''}</div>
         </div>`);
     });
-    setTimeout(runModalQueue, 1500);
+    nudgeQueue(1500);
 }
 
+// 讓排隊中的視窗出現（runModalQueue 自己會避開闖關、對戰進行中）
+function nudgeQueue(ms) { setTimeout(runModalQueue, ms); }
 function checkLegends() {
     for (const L of LEGENDS) {
         if (S.legend[L.sp]) continue;
@@ -723,7 +725,7 @@ function checkLegends() {
         S.legend[L.sp] = Date.now();
         S.eggs.push({ id: Math.random().toString(36).slice(2, 9), species: L.sp, progress: 0, need: LEGEND_EGG_NEED, legend: true });
         G.modalQueue.push(() => legendModal(L));
-        setTimeout(runModalQueue, 1200);
+        nudgeQueue(1200);
     }
 }
 function legendModal(L) {
@@ -742,12 +744,9 @@ function checkAchievements() {
     if (!S.mons?.length) return;
     checkLegends();
     checkTips();
-    for (const c of collectList()) {
-        if (S.collect[c.id] || S.collectNote[c.id]) continue;
-        let v = 0;
-        try { v = c.v(); } catch {}
-        if (v >= c.goal) { S.collectNote[c.id] = 1; setTimeout(() => toast(`🎁 收集獎勵可以領了：${c.name}（到怪獸圖鑑領取）`, 'gold', 3600), 600); }
-    }
+    const fresh = collectList().filter(c => { if (S.collect[c.id] || S.collectNote[c.id]) return false; try { return c.v() >= c.goal; } catch { return false; } });
+    fresh.forEach(c => { S.collectNote[c.id] = 1; });
+    if (fresh.length) setTimeout(() => toast(fresh.length === 1 ? `🎁 收集獎勵可以領了：${fresh[0].name}（到怪獸圖鑑領取）` : `🎁 有 ${fresh.length} 個收集獎勵可以領了（到怪獸圖鑑領取）`, 'gold', 3600), 600);
     for (const a of ACHIEVEMENTS) {
         if (S.ach[a.id]) continue;
         let v = 0;
@@ -1036,6 +1035,7 @@ function levelInfo(m = activeMon()) {
     return { lv, cur: rest, need: xpToNext(lv) };
 }
 function formIdx(lv) { return lv >= FORM_LV[2] ? 2 : lv >= FORM_LV[1] ? 1 : 0; }
+function hasDefaultName(m) { const sp = speciesOf(m); return [...sp.forms, ...Object.values(sp.alt || {})].some(f => f.n === m.name); }
 function isFinal(m) { return formIdx(levelInfo(m).lv) === 2; }
 function branchOf(m) { return m && isFinal(m) && speciesOf(m).alt[m.branch] ? m.branch : 'base'; }
 function branchMeta(id) { return BRANCHES.find(b => b.id === id) || BRANCHES[0]; }
@@ -1047,9 +1047,9 @@ function formOf(m = activeMon()) { const sp = speciesOf(m), i = formIdx(levelInf
 function setBranch(id, b) {
     const m = S.mons.find(x => x.id === id);
     if (!m || !isFinal(m) || branchScore(m, b) < 1 || branchOf(m) === b) return;
-    const old = formOf(m);
+    const follow = hasDefaultName(m);
     m.branch = b;
-    if (m.name === old.n) m.name = formOf(m).n;
+    if (follow) m.name = formOf(m).n;
     markForm(m);
     playSound('levelup'); burst();
     save(); render(); closeModal(); openMon(id);
@@ -1127,7 +1127,7 @@ function addMonsterXP(n, m = activeMon()) {
             const oldName = m.name;
             // 沒改過名字的怪獸，名字跟著型態一起進化
             if (fa === 2) m.branch = pickBranch(m);
-            if (oldName === speciesOf(m).forms[fb].n) m.name = formOf(m).n;
+            if (hasDefaultName(m)) m.name = formOf(m).n;
             markForm(m);
             G.modalQueue.push(() => evolutionModal(m, fb, fa, oldName));
         }
@@ -1374,7 +1374,7 @@ function openFood() {
             return `<div class="mt-3 p-3 rounded-2xl" style="background:var(--orange-t)">
                 <div class="flex items-center justify-between"><div class="font-black text-sm">😋 單字點心</div><span class="text-xs" style="color:var(--muted)">今天還能吃 ${Math.max(0, left)} 個</span></div>
                 <div class="text-xs mt-1" style="color:var(--muted)">${esc(m.name)} 愛吃：${favs.map(r => `${r.emoji}${r.name}`).join('、')}。答對意思就能餵牠，每吃 ${FAV_STEP} 個全能力 +1%（已吃 ${ateCount(m)} 個）</div>
-                ${words.length && left > 0 ? `<div class="flex flex-wrap gap-2 mt-2">${words.map(k => `<button class="pill" style="background:#fff;border:2px solid var(--orange);color:var(--orange-d)" onclick="snackQuiz('${k.replace(/'/g, "\\'")}')">${esc(S.dex[k].word)}</button>`).join('')}</div>`
+                ${words.length && left > 0 ? `<div class="flex flex-wrap gap-2 mt-2">${words.map(k => `<button class="pill" style="background:#fff;border:2px solid var(--orange);color:var(--orange-d)" onclick="snackQuiz(decodeURIComponent('${encodeURIComponent(k).replace(/'/g, '%27')}'))">${esc(S.dex[k].word)}</button>`).join('')}</div>`
                     : `<div class="text-xs font-black mt-2" style="color:var(--orange-d)">${left <= 0 ? '今天吃夠多了，明天再來餵牠' : `圖鑑裡沒有牠沒吃過的愛吃單字了，去${favs.map(r => `「${r.name}」`).join('')}抓新的吧！`}</div>`}
             </div>`; })()}
         <div class="flex gap-2 mt-4"><button class="btn white flex-1" onclick="closeModal()">關閉</button><button class="btn orange flex-1" onclick="G.shopTab='food'; openShop()">🛍️ 買食物</button></div>
@@ -1641,8 +1641,9 @@ function randomEggSpecies() {
     const fresh = SPECIES.filter(s => !s.rare && !owned.has(s.id));
     return pick(fresh.length ? fresh : SPECIES.filter(s => !s.rare)).id;
 }
+function eggSlots() { return S.eggs.filter(e => !e.legend).length; }   // 傳說的蛋不占格子
 function addEgg(species = randomEggSpecies()) {
-    if (S.eggs.length >= MAX_EGGS) return false;
+    if (eggSlots() >= MAX_EGGS) return false;
     S.eggs.push({ id: Math.random().toString(36).slice(2, 9), species, progress: 0, need: EGG_NEED });
     return true;
 }
@@ -1667,7 +1668,9 @@ function hatchEgg(id) {
     playSound('pop');
 
     function revealHatch() {
-        S.eggs.splice(i, 1);
+        const at = S.eggs.indexOf(egg);
+        if (at < 0) return;
+        S.eggs.splice(at, 1);
         const m = newMon(egg.species);
         if (S.mons.some(x => x.species === egg.species)) gainShards(5, '孵出已有的種族');
         S.mons.push(m); bumpStat('hatched');
@@ -2413,6 +2416,7 @@ function closeModal() {
 }
 function runModalQueue() {
     if (G.modalOpen || !G.modalQueue.length) return;
+    if (G.play && !G.play.finished) return;   // 闖關、對戰進行中不跳視窗，結束後 closePlay 或結算畫面會再呼叫
     G.modalQueue.shift()();
 }
 
@@ -2498,7 +2502,7 @@ function openShop() {
             <div class="text-6xl wiggle" style="animation-iteration-count:infinite">🥚</div>
             <div class="font-black text-lg mt-2">神秘怪獸蛋</div>
             <p class="text-xs mt-1" style="color:var(--muted)">優先孵出你還沒有的種族，還有機會出現稀有的星際幽靈族或閃光色！<br>答對 ${EGG_NEED} 題就會孵化。孵蛋器最多放 ${MAX_EGGS} 顆。</p>
-            <button class="btn orange mt-3" onclick="buyEgg()">🪙 ${EGG_PRICE} 購買（孵蛋器 ${S.eggs.length}/${MAX_EGGS}）</button>
+            <button class="btn orange mt-3" onclick="buyEgg()">🪙 ${EGG_PRICE} 購買（孵蛋器 ${eggSlots()}/${MAX_EGGS}）</button>
         </div>
         <div class="grid grid-cols-5 gap-1 mt-3">${SPECIES.map(s => { const known = S.seen.includes(s.id) || S.mons.some(x => x.species === s.id); return `<div class="text-center"><div class="text-2xl" style="${known ? '' : 'filter:brightness(0);opacity:.2'}">${s.forms[0].e}</div><div class="text-[10px]" style="color:var(--muted)">${known ? s.name : '???'}</div></div>`; }).join('')}</div>`;
     }
@@ -2540,7 +2544,7 @@ function furnItem(id) {
     save(); openShop();
 }
 function buyEgg() {
-    if (S.eggs.length >= MAX_EGGS) return toast('孵蛋器滿了，先孵化一顆吧');
+    if (eggSlots() >= MAX_EGGS) return toast('孵蛋器滿了，先孵化一顆吧');
     if (!spend(EGG_PRICE)) return;
     addEgg();
     save(); toast('🥚 新的蛋放進孵蛋器了！', 'good'); openShop();
