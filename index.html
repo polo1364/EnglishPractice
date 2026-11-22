@@ -2947,12 +2947,18 @@ const ELEM = {
     star:  { n: '星', e: '⭐', beats: ['night', 'wind'] }
 };
 const TRAINERS = [
-    { name: '新手小明',   lv: 2,  sp: 'bug' },    { name: '甜點師小美', lv: 3,  sp: 'bunny' },
-    { name: '登山客阿強', lv: 4,  sp: 'dino' },   { name: '游泳選手莉莉', lv: 5, sp: 'sea' },
-    { name: '夜貓子大雄', lv: 6,  sp: 'cat' },    { name: '飛行教練 Max', lv: 7, sp: 'bird' },
-    { name: '火焰雙胞胎', lv: 8,  sp: 'dragon' }, { name: '幽靈少女 Mia', lv: 10, sp: 'ghost' },
-    { name: '冠軍候補 Leo', lv: 12, sp: 'dino' }, { name: '競技場冠軍 Aurora', lv: 14, sp: 'dragon' }
+    { name: '新手小明',   lv: 2,  sp: 'bug',    sp2: 'bird' },  { name: '甜點師小美', lv: 3,  sp: 'bunny', sp2: 'cat' },
+    { name: '登山客阿強', lv: 4,  sp: 'dino',   sp2: 'sea' },   { name: '游泳選手莉莉', lv: 5, sp: 'sea',  sp2: 'bunny' },
+    { name: '夜貓子大雄', lv: 6,  sp: 'cat',    sp2: 'dragon' }, { name: '飛行教練 Max', lv: 7, sp: 'bird', sp2: 'bug' },
+    { name: '火焰雙胞胎', lv: 8,  sp: 'dragon', sp2: 'dino' },  { name: '幽靈少女 Mia', lv: 10, sp: 'ghost', sp2: 'sea' },
+    { name: '冠軍候補 Leo', lv: 12, sp: 'dino', sp2: 'ghost' }, { name: '競技場冠軍 Aurora', lv: 14, sp: 'dragon', sp2: 'sea' }
 ];
+// 雙打：在競技場選一隻搭檔（S.arena.buddy）就變成 2 對 2，對手也會多派一隻（sp2）。可以花一回合換手，倒下會自動換
+function arenaBuddy() {
+    const m = S.mons.find(x => x.id === S.arena.buddy);
+    return m && m.id !== S.active && !tripOf(m.id) ? m : null;
+}
+function setBuddy(id) { S.arena.buddy = id || null; save(); openArena(); }
 function elOf(species) { return ELEM[SP_EL[species] || 'fire']; }
 function typeMult(atkSp, defSp) {
     const a = SP_EL[atkSp], d = SP_EL[defSp];
@@ -2992,6 +2998,14 @@ function openArena() {
                 <div class="text-xs" style="color:var(--muted)">屬性 ${el.e}${el.n}・HP ${monBattleStats(m).max}・攻 ${monBattleStats(m).atk}・防 ${monBattleStats(m).def}・速 ${monBattleStats(m).spd}・戰績 ${S.arena.wins} 勝 ${S.arena.losses} 敗</div>
                 <div class="text-xs mt-1" style="color:var(--muted)">${el.e}${el.n} 剋 ${el.beats.map(b => ELEM[b].e + ELEM[b].n).join('、')}</div></div>
         </div>
+        ${(() => {
+            const buddy = arenaBuddy(), others = S.mons.filter(x => x.id !== m.id && !tripOf(x.id));
+            if (!others.length) return '<p class="text-xs mt-2" style="color:var(--muted)">👥 牧場有第二隻怪獸時，就能組隊打雙打</p>';
+            return `<div class="card p-3 mt-2"><div class="flex items-center justify-between"><div class="font-black text-sm">👥 搭檔 <span class="text-xs" style="color:var(--muted)">${buddy ? '雙打 2 對 2・金幣 +50%' : '選一隻就變成雙打'}</span></div></div>
+                <div class="flex gap-2 overflow-x-auto noscroll mt-2 pb-1">
+                    <button class="mini ${buddy ? '' : 'on'}" onclick="setBuddy('')"><div class="text-3xl">🙅</div><div class="text-xs font-black">單打</div><div class="text-[10px]" style="color:var(--muted)">1 對 1</div></button>
+                    ${others.map(x => `<button class="mini ${buddy?.id === x.id ? 'on' : ''}" onclick="setBuddy('${x.id}')"><div class="text-3xl" style="${emojiStyle(x)}">${formOf(x).e}</div><div class="text-xs font-black truncate">${esc(x.name)}</div><div class="text-[10px]" style="color:var(--muted)">Lv.${levelInfo(x).lv} ${elOf(x.species).e}</div></button>`).join('')}
+                </div></div>`; })()}
         <p class="text-xs my-3" style="color:var(--muted)">💡 答對單字題才能出招！Lv.3 / 6 / 9 會學到新技能；速度快的一方先攻、也比較容易閃避；親密度越高越容易爆擊。換夥伴可以到小屋的牧場。</p>
         <div class="space-y-2">${TRAINERS.map((t, i) => {
             const open = i <= S.arena.rank, beaten = i < S.arena.rank;
@@ -2999,9 +3013,9 @@ function openArena() {
             const k = typeMult(m.species, t.sp);
             return `<button class="card p-3 w-full flex items-center gap-3 text-left ${open ? '' : 'opacity-50'}" ${open ? `onclick="startBattle(${i})"` : ''}>
                 <div class="w-8 text-center font-black" style="color:var(--muted)">${i + 1}</div>
-                <div class="text-4xl" style="${open ? '' : 'filter:brightness(0);opacity:.3'}">${sp.forms[formIdx(t.lv)].e}</div>
+                <div class="text-4xl whitespace-nowrap" style="${open ? '' : 'filter:brightness(0);opacity:.3'}">${sp.forms[formIdx(t.lv)].e}${arenaBuddy() ? `<span class="text-2xl">${SPECIES.find(s => s.id === t.sp2).forms[formIdx(t.lv)].e}</span>` : ''}</div>
                 <div class="flex-1 min-w-0"><div class="font-black truncate">${open ? t.name : '???'}</div>
-                    <div class="text-xs" style="color:var(--muted)">Lv.${t.lv}・${fe.e}${fe.n}${open ? `・我方攻擊 ${multText(k)}` : ''}</div></div>
+                    <div class="text-xs" style="color:var(--muted)">Lv.${t.lv}・${fe.e}${fe.n}${arenaBuddy() ? `＋${elOf(t.sp2).e}${elOf(t.sp2).n}` : ''}${open ? `・我方攻擊 ${multText(k)}` : ''}</div></div>
                 ${beaten ? '<span class="pill" style="background:var(--green-t);color:var(--green-d)">✓ 已擊敗</span>' : open ? '<span class="btn sm red">挑戰</span>' : '<span>🔒</span>'}
             </button>`; }).join('')}</div>
     </div>`;
@@ -3009,49 +3023,62 @@ function openArena() {
 }
 
 function startBattle(i) {
-    const m = activeMon();
+    const m = activeMon(), buddy = arenaBuddy();
     const t = TRAINERS[i];
     stopGame();
     let words = Object.values(S.dex).filter(d => d.mean);
     if (words.length < 4) words = [...words, ...BASIC_WORDS.filter(b => !words.some(x => x.word === b.word))];
-    const foeName = SPECIES.find(s => s.id === t.sp).forms[formIdx(t.lv)].n;
-    const b = G.game = { id: 'battle', i, t, words, heals: 2,
-        me: battleSide(monBattleStats(m), m.species, levelInfo(m).lv, m.name), foe: battleSide(battleStats(t.lv, t.sp), t.sp, t.lv, foeName), busy: false, log: `${t.name} 派出了 ${foeName}！` };
+    const mySide = x => {
+        const side = battleSide(monBattleStats(x), x.species, levelInfo(x).lv, x.name);
+        if (starsOf(x) >= 3) Object.keys(side.pp).forEach(k => { side.pp[k]++; });
+        return { m: x, side };
+    };
+    const foeSide = sp => {
+        const form = SPECIES.find(s => s.id === sp).forms[formIdx(t.lv)];
+        const side = battleSide(battleStats(t.lv, sp), sp, t.lv, form.n);
+        side.atk = Math.round(side.atk * FOE_ATK); side.clumsy = FOE_CLUMSY; side.form = form; side.lv = t.lv;
+        return side;
+    };
+    const b = G.game = { id: 'battle', i, t, words, heals: 2, busy: false,
+        team: buddy ? [mySide(m), mySide(buddy)] : [mySide(m)], cur: 0,
+        foes: buddy ? [foeSide(t.sp), foeSide(t.sp2)] : [foeSide(t.sp)], fcur: 0,
+        get me() { return this.team[this.cur].side; }, get mon() { return this.team[this.cur].m; }, get foe() { return this.foes[this.fcur]; } };
+    b.log = `${t.name} 派出了 ${b.foe.name}！`;
     G.play = { kind: 'arena', phase: 'battle', finished: false };
     openPlay(); hideSheet();
-    if (starsOf(m) >= 3) Object.keys(b.me.pp).forEach(k => { b.me.pp[k]++; });
-    b.foe.atk = Math.round(b.foe.atk * FOE_ATK); b.foe.clumsy = FOE_CLUMSY;
     b.onKey = e => {
         if (G.modalOpen || !G.game || G.game.id !== 'battle') return;
-        if (/^[1-6]$/.test(e.key)) { const btn = document.querySelector(`#battle-panel [data-k="${e.key}"]`); if (btn && !btn.disabled) btn.click(); }
+        if (/^[1-7]$/.test(e.key)) { const btn = document.querySelector(`#battle-panel [data-k="${e.key}"]`); if (btn && !btn.disabled) btn.click(); }
     };
     document.addEventListener('keydown', b.onKey);
     renderBattle();
     playSound('pop');
     if (b.foe.spd > b.me.spd) {
         b.busy = true;
-        setTimeout(() => { if (G.game !== b) return; setLog(`💨 ${esc(foeName)} 的速度比較快，搶先出手！`); setTimeout(foeTurn, 900); }, 700);
+        setTimeout(() => { if (G.game !== b) return; setLog(`💨 ${esc(b.foe.name)} 的速度比較快，搶先出手！`); setTimeout(foeTurn, 900); }, 700);
     }
 }
 
 function renderBattle() {
-    const b = G.game, m = activeMon();
-    const sp = SPECIES.find(s => s.id === b.t.sp);
+    const b = G.game, m = b.mon;
+    const mate = b.team.find((x, i) => i !== b.cur), foeLeft = b.foes.length - b.fcur - 1;
     const hpBar = (x, color) => `<div class="bar" style="height:10px"><i style="width:${Math.max(0, x.hp / x.max * 100)}%;background:${x.hp / x.max < .3 ? 'var(--red)' : color}"></i></div>`;
     $('play-head').innerHTML = `<button class="btn white sm" onclick="confirmQuit()" aria-label="離開">✕</button><div class="flex-1 font-black">⚔️ VS ${esc(b.t.name)}</div>`;
     $('play-body').innerHTML = `
     <div class="battle-field">
         <div class="hp-card" style="top:12px;left:12px">
-            <div class="flex justify-between text-sm font-black"><span>${esc(sp.forms[formIdx(b.t.lv)].n)}</span><span>Lv.${b.t.lv} ${elOf(b.t.sp).e}</span></div>
-            ${hpBar(b.foe, 'var(--green)')}<div class="text-[11px] text-right" style="color:var(--muted)">${Math.max(0, Math.ceil(b.foe.hp))}/${b.foe.max}</div>
+            <div class="flex justify-between text-sm font-black"><span>${esc(b.foe.name)}</span><span>Lv.${b.foe.lv} ${elOf(b.foe.sp).e}</span></div>
+            ${hpBar(b.foe, 'var(--green)')}<div class="text-[11px] text-right hp-num" style="color:var(--muted)">${Math.max(0, Math.ceil(b.foe.hp))}/${b.foe.max}</div>
+            ${b.foes.length > 1 ? `<div class="text-[10px]" style="color:var(--muted)">${foeLeft ? `後面還有 ${b.foes[b.fcur + 1].form.e}` : '最後一隻'}</div>` : ''}
         </div>
-        <div id="foe-mon" class="b-mon" style="top:34px;right:10%">${sp.forms[formIdx(b.t.lv)].e}</div>
+        <div id="foe-mon" class="b-mon" style="top:34px;right:10%">${b.foe.form.e}</div>
         <div class="b-shadow" style="top:128px;right:9%"></div>
         <div id="me-mon" class="b-mon me" style="bottom:22px;left:9%"><span style="${emojiStyle(m)}">${formOf(m).e}</span></div>
         <div class="b-shadow" style="bottom:16px;left:8%"></div>
         <div class="hp-card" style="bottom:14px;right:12px">
             <div class="flex justify-between text-sm font-black"><span>${esc(m.name)}</span><span>Lv.${levelInfo(m).lv} ${elOf(m.species).e}</span></div>
-            ${hpBar(b.me, 'var(--green)')}<div class="text-[11px] text-right" style="color:var(--muted)">${Math.max(0, Math.ceil(b.me.hp))}/${b.me.max}</div>
+            ${hpBar(b.me, 'var(--green)')}<div class="text-[11px] text-right hp-num" style="color:var(--muted)">${Math.max(0, Math.ceil(b.me.hp))}/${b.me.max}</div>
+            ${mate ? `<div class="text-[10px]" style="color:var(--muted)">搭檔 ${formOf(mate.m).e} ${mate.side.hp > 0 ? `HP ${Math.ceil(mate.side.hp)}/${mate.side.max}` : '倒下了'}</div>` : ''}
         </div>
     </div>
     <div class="card p-3 mt-3 text-sm font-black min-h-[44px]" id="battle-log">${b.log}</div>
@@ -3060,8 +3087,9 @@ function renderBattle() {
 }
 
 function renderMoves() {
-    const b = G.game, m = activeMon(), el = elOf(m.species);
-    const k = typeMult(m.species, b.t.sp), color = SPECIES.find(s => s.id === m.species).color;
+    const b = G.game, m = b.mon, el = elOf(m.species);
+    const mate = b.team.find((x, i) => i !== b.cur);
+    const k = typeMult(m.species, b.foe.sp), color = SPECIES.find(s => s.id === m.species).color;
     const mv = (key, kind, icon, name, note, dis, border) => `<button class="move" data-k="${key}" ${kind ? `onclick="chooseMove('${kind}')"` : ''} ${dis ? 'disabled' : ''} style="padding:.5rem .55rem;gap:.4rem;${border ? `border-color:${border}` : ''}"><span class="text-2xl">${icon}</span><span class="flex-1 text-left min-w-0"><b class="block text-sm truncate">${name}</b><span class="block text-[11px] leading-tight" style="color:var(--muted)">${note}</span></span></button>`;
     $('play-foot').innerHTML = '';
     $('battle-panel').innerHTML = `<div class="grid grid-cols-2 gap-2">
@@ -3071,7 +3099,24 @@ function renderMoves() {
         ${SKILLS[m.species].map((sk, i) => b.me.skills.includes(sk)
             ? mv(4 + i, 'sk' + i, sk.e, `${sk.n}（剩 ${b.me.pp[sk.n]}）`, skillDesc(sk), !b.me.pp[sk.n], color)
             : mv(4 + i, '', '🔒', `Lv.${SKILL_LV[i]} 學會`, '還沒學會的技能', true)).join('')}
-    </div>`;
+    </div>
+    ${mate ? `<button class="move mt-2" data-k="7" onclick="swapMon()" ${mate.side.hp > 0 ? '' : 'disabled'} style="padding:.5rem .7rem"><span class="text-2xl">🔄</span><span class="flex-1 text-left min-w-0"><b class="block text-sm truncate">換 ${esc(mate.m.name)} 上場 ${formOf(mate.m).e}</b><span class="block text-[11px] leading-tight" style="color:var(--muted)">${mate.side.hp > 0 ? `HP ${Math.ceil(mate.side.hp)}/${mate.side.max}・攻擊 ${multText(typeMult(mate.m.species, b.foe.sp))}・不用答題，但對手會趁機攻擊` : '已經倒下了'}</span></span></button>` : ''}`;
+}
+
+// 換手：不用答題，但要花掉這一回合（對手會打剛上場的那隻）
+function swapMon(free) {
+    const b = G.game;
+    if (!b || (b.busy && !free)) return;
+    const next = b.team.findIndex((x, i) => i !== b.cur && x.side.hp > 0);
+    if (next < 0) return;
+    const out = b.mon.name;
+    b.cur = next;
+    b.busy = true;
+    playSound('pop');
+    b.log = free ? `${esc(out)} 倒下了…換 ${esc(b.mon.name)} 上場！` : `🔄 ${esc(out)} 回來休息，換 ${esc(b.mon.name)} 上場！`;
+    renderBattle();
+    if (free) { b.busy = false; return; }
+    setTimeout(() => { if (G.game === b) foeTurn(); }, 900);
 }
 
 function chooseMove(kind) {
@@ -3127,7 +3172,7 @@ function refreshHp() {
         bar.style.width = Math.max(0, x.hp / x.max * 100) + '%';
         if (x.hp / x.max < .3) bar.style.background = 'var(--red)';
     });
-    document.querySelectorAll('.hp-card .text-right').forEach((t, idx) => { const x = idx === 0 ? b.foe : b.me; t.textContent = `${Math.max(0, Math.ceil(x.hp))}/${x.max}`; });
+    document.querySelectorAll('.hp-card .hp-num').forEach((t, idx) => { const x = idx === 0 ? b.foe : b.me; t.textContent = `${Math.max(0, Math.ceil(x.hp))}/${x.max}`; });
 }
 
 function battleAnswer(i) {
@@ -3135,7 +3180,7 @@ function battleAnswer(i) {
     if (!b || b.id !== 'battle' || b.busy) return;
     b.busy = true;
     stopTimer();
-    const c = b.q, m = activeMon();
+    const c = b.q, m = b.mon;
     const ok = i >= 0 && c.options[i] === c.answer;
     document.querySelectorAll('#battle-panel .opt').forEach(btn => {
         btn.disabled = true;
@@ -3165,7 +3210,16 @@ function battleAnswer(i) {
         refreshHp();
         setTimeout(() => {
             if (G.game !== b) return;
-            if (b.foe.hp <= 0) return endBattle(true);
+            if (b.foe.hp <= 0) {
+                if (b.fcur >= b.foes.length - 1) return endBattle(true);
+                // 打倒一隻：對手換下一隻上場並立刻出手（模擬結果：這樣雙打和單打的難度才接近）
+                const down = b.foe.name;
+                b.fcur++;
+                b.log = `${esc(down)} 倒下了！${esc(b.t.name)} 派出了 ${esc(b.foe.name)}！`;
+                playSound('pop');
+                renderBattle();
+                return setTimeout(() => { if (G.game === b) foeTurn(); }, 1100);
+            }
             foeTurn();
         }, 1300);
     }, 450);
@@ -3182,7 +3236,7 @@ function doAction(who, act) {
         lunge(who);
         if (Math.random() < missChance(a, d)) { playSound('pop'); return `${head}，但是被 ${esc(d.name)} 躲開了！`; }
         const k = act.plain ? 1 : typeMult(a.sp, d.sp);
-        const crit = !!sk?.crit || Math.random() < (who === 'me' ? 0.05 + hearts(activeMon()) * 0.04 : 0.05);
+        const crit = !!sk?.crit || Math.random() < (who === 'me' ? 0.05 + hearts(b.mon) * 0.04 : 0.05);
         const guard = d.shield > 0 ? .5 : 1;
         if (guard < 1) { d.shield--; notes.push('護盾擋下一半'); }
         let total = 0;
@@ -3215,17 +3269,20 @@ function foeTurn() {
     // 對手有兩成機率（FOE_SKILL）使用還有次數的技能（已經疊滿的強化、還有護盾時不重複用）
     const usable = b.foe.skills.filter(k => b.foe.pp[k.n] > 0 && !(k.shield && b.foe.shield) && !(k.self && !k.pow && Object.keys(k.self).some(s => b.foe['m' + s[0].toUpperCase() + s.slice(1)] > 1.5)));
     const sk = usable.length && Math.random() < FOE_SKILL ? pick(usable) : null;
-    setLog(doAction('foe', sk ? { sk } : { pow: 1, e: elOf(b.t.sp).e, label: ' 反擊' }));
+    setLog(doAction('foe', sk ? { sk } : { pow: 1, e: elOf(b.foe.sp).e, label: ' 反擊' }));
     setTimeout(() => {
         if (G.game !== b) return;
-        if (b.me.hp <= 0) return endBattle(false);
+        if (b.me.hp <= 0) {
+            if (!b.team.some(x => x.side.hp > 0)) return endBattle(false);
+            return swapMon(true);
+        }
         b.busy = false;
         renderMoves();
     }, 1300);
 }
 
 function endBattle(win) {
-    const b = G.game, m = activeMon();
+    const b = G.game, m = activeMon(), duo = b.team.length > 1;
     stopGame(); stopTimer();
     G.play.finished = true;
     let coins, xp = 0, extra = '';
@@ -3233,16 +3290,17 @@ function endBattle(win) {
         const first = b.i === S.arena.rank;
         if (first) S.arena.rank = Math.min(TRAINERS.length, S.arena.rank + 1);
         S.arena.wins++;
-        const am = activeMon();
-        if (am) {
+        b.team.forEach(({ m: am }) => {
             am.wins = (am.wins || 0) + 1;
             if (am.wins === BRANCH_NEED.battle && isFinal(am)) toast(`⚔️ ${am.name} 可以變成戰鬥型了！點名字切換型態`, 'gold', 3600);
-        }
+        });
         S.arena.trophies += first ? 10 + b.i * 5 : 3;
         gainShards(first ? 3 : 1, '競技場勝利');
-        coins = first ? 20 + b.i * 10 : 8;
+        coins = Math.round((first ? 20 + b.i * 10 : 8) * (duo ? 1.5 : 1));
         xp = addMonsterXP(first ? 10 + b.i * 4 : 5);
         cheer(15); addAffection(2);
+        // 搭檔也拿到一半經驗，並增加親密度
+        if (duo) { const mate = b.team[1].m; addMonsterXP(Math.ceil((first ? 10 + b.i * 4 : 5) / 2), mate); cheer(10, mate); addAffection(1, mate); }
         if (first && b.i === TRAINERS.length - 1) extra = '<div class="mt-4 p-3 rounded-2xl font-black" style="background:#fff1c2;color:#8a6500">🥇 你成為了競技場冠軍！</div>';
         else if (first && TRAINERS[b.i + 1]) extra = `<div class="mt-4 p-3 rounded-2xl font-black" style="background:var(--green-t);color:var(--green-d)">🔓 新對手：${esc(TRAINERS[b.i + 1].name)}</div>`;
         playSound('win'); burst();
@@ -3261,7 +3319,7 @@ function endBattle(win) {
         <div class="text-6xl">${win ? '🏆' : '💫'}</div>
         <div class="text-3xl font-black mt-3">${win ? '勝利！' : '輸了…'}</div>
         <div class="my-4">${monsterHTML(96, false)}</div>
-        <div class="font-black">${win ? `${esc(m.name)} 打敗了 ${esc(b.t.name)}！` : `${esc(m.name)} 累倒了…`}</div>
+        <div class="font-black">${win ? `${esc(m.name)}${duo ? ` 和 ${esc(b.team[1].m.name)}` : ''} 打敗了 ${esc(b.t.name)}！` : `${esc(m.name)}${duo ? ` 和 ${esc(b.team[1].m.name)}` : ''} 累倒了…`}</div>
         <div class="grid grid-cols-2 gap-2 mt-4 max-w-xs mx-auto">
             <div class="card p-3"><div class="text-xl font-black" style="color:#a67c00">+${coins}</div><div class="text-xs" style="color:var(--muted)">🪙 金幣</div></div>
             <div class="card p-3"><div class="text-xl font-black" style="color:var(--orange-d)">+${xp}</div><div class="text-xs" style="color:var(--muted)">⭐ 經驗</div></div>
