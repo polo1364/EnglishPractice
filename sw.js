@@ -1,6 +1,6 @@
 // 單字怪獸 LinguaMon - Service Worker
 // 讓 App 可以安裝到手機，並在沒有網路時也能開啟（訓練場、小遊戲、競技場不需要 API）
-const VERSION = 'linguamon-v11';
+const VERSION = 'linguamon-v12';
 const SHELL = [
     './',
     './index.html',
@@ -14,6 +14,7 @@ const SHELL = [
 // Q 版美術（怪獸 24 張 + 分支最終型態 16 張 + 魔王 20 張）
 const ART = [
     ...['dragon', 'sea', 'cat', 'bird', 'bunny', 'bug', 'dino', 'ghost'].flatMap(s => [`sp_${s}_guard`, `sp_${s}_battle`]),
+    ...['fox', 'wolf'].flatMap(s => [1, 2, 3, 'guard', 'battle'].map(f => `sp_${s}_${f}`)),   // 傳說種族
     'sp_dragon_1', 'sp_dragon_2', 'sp_dragon_3', 'sp_sea_1', 'sp_sea_2', 'sp_sea_3',
     'sp_cat_1', 'sp_cat_2', 'sp_cat_3', 'sp_bird_1', 'sp_bird_2', 'sp_bird_3',
     'sp_bunny_1', 'sp_bunny_2', 'sp_bunny_3', 'sp_bug_1', 'sp_bug_2', 'sp_bug_3',

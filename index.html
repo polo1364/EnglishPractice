@@ -405,8 +405,21 @@ const SPECIES = [
       say: ['吼～！', '我要吃掉所有難字！', 'ROAR! I am the king!'] },
     { id: 'ghost', name: '星際幽靈族', type: '👾 星', color: '#8e6cef', tint: '#efeafd', hue: 250, rare: true,
       forms: [{ e: '👻', n: '小幽幽' }, { e: '🎃', n: '南瓜幽靈' }, { e: '👾', n: '星際怪客' }],
-      say: ['嘿嘿嘿～嚇到了嗎？', '我從外太空來學英文的', 'Boo! 👻'] }
+      say: ['嘿嘿嘿～嚇到了嗎？', '我從外太空來學英文的', 'Boo! 👻'] },
+    // 傳說種族：買蛋孵不到，只能靠達成條件拿到傳說的蛋（見 LEGENDS）
+    { id: 'fox', name: '極光狐族', type: '☀️ 光', color: '#3fbfa0', tint: '#e3f8f2', hue: 130, rare: true, legend: true,
+      forms: [{ e: '🦊', n: '小光狐' }, { e: '🦊', n: '極光狐' }, { e: '🦊', n: '九尾天狐' }],
+      say: ['你看，我的尾巴會發光喔', '每學會一個單字，極光就更亮一點', 'The sky is so beautiful tonight!'] },
+    { id: 'wolf', name: '月影狼族', type: '🌑 影', color: '#5b6bd6', tint: '#e6e9fb', hue: 220, rare: true, legend: true,
+      forms: [{ e: '🐺', n: '小影狼' }, { e: '🐺', n: '月影狼' }, { e: '🐺', n: '蝕月狼王' }],
+      say: ['嗷嗚～～', '月亮出來的時候我最有精神', 'I will protect you. Always.'] }
 ];
+// 傳說種族的取得條件：達成後送一顆傳說的蛋（不占孵蛋器格子，要答對比較多題才會孵化）
+const LEGENDS = [
+    { sp: 'fox',  need: '打倒 8 個魔王',   goal: 8,  v: () => REGIONS.filter(r => S.progress[r.id]?.boss).length },
+    { sp: 'wolf', need: '成為競技場冠軍', goal: 10, v: () => S.arena.rank }
+];
+const LEGEND_EGG_NEED = 40;
 
 // 分支進化：Lv.10 時依養法走向不同的最終型態（forms[2] 是預設的「智慧型」），條件達成後可在夥伴頁自由切換
 const BRANCHES = [
@@ -423,14 +436,17 @@ const ALT_FORMS = {
     bunny:  { guard: { e: '🐇', n: '月兔仙子' },   battle: { e: '🐇', n: '劍士兔' } },
     bug:    { guard: { e: '🦋', n: '提燈螢火蟲' }, battle: { e: '🐞', n: '鋼角甲蟲' } },
     dino:   { guard: { e: '🦕', n: '森林盾龍' },   battle: { e: '🦖', n: '迅爪龍' } },
-    ghost:  { guard: { e: '👻', n: '星光守護靈' }, battle: { e: '👾', n: '黑洞魅影' } }
+    ghost:  { guard: { e: '👻', n: '星光守護靈' }, battle: { e: '👾', n: '黑洞魅影' } },
+    fox:    { guard: { e: '🦊', n: '祈福神狐' },   battle: { e: '🦊', n: '雷光戰狐' } },
+    wolf:   { guard: { e: '🐺', n: '守夜銀狼' },   battle: { e: '🐺', n: '暗月戰狼' } }
 };
 SPECIES.forEach(s => { s.alt = ALT_FORMS[s.id]; });
 
 // 能力值：每族的成長傾向 [HP, 攻擊, 防禦, 速度] 倍率
 const SP_STAT = {
     dragon: [1, 1.15, .95, 1],    sea:   [1.2, .95, 1.05, .9], cat:  [.95, 1.05, .9, 1.25], bird:  [.95, 1.05, .9, 1.35],
-    bunny:  [1.1, .9, 1, 1.1],    bug:   [1, 1, 1.3, .9],   dino: [1.15, 1.15, 1.1, .7], ghost: [.85, 1.15, .9, 1.2]
+    bunny:  [1.1, .9, 1, 1.1],    bug:   [1, 1, 1.3, .9],   dino: [1.15, 1.15, 1.1, .7], ghost: [.85, 1.15, .9, 1.2],
+    fox:    [1, 1.1, .95, 1.3],   wolf:  [1.1, 1.2, 1.05, 1]    // 傳說種族的總和比一般種族高一點
 };
 // 技能：Lv.3 / 6 / 9 各學會一招，在競技場使用；魔王戰連續答對 3 題時會自動發動最新學會的一招
 // pow 威力倍率（吃屬性相剋）、hits 連擊數、drain 吸血比例、crit 必定爆擊、self / foe 能力變化倍率、shield 護盾次數、pp 每場可用次數
@@ -443,7 +459,9 @@ const SKILLS = {
     bunny:  [{ n: '撒嬌',     e: '🥺', foe: { atk: .75 }, pp: 2 },   { n: '愛心吸取', e: '💗', pow: 1.1, drain: .5, pp: 3 },         { n: '彩虹光束', e: '🌈', pow: 2, pp: 1 }],
     bug:    [{ n: '結繭',     e: '🧶', self: { def: 1.6 }, pp: 2 },  { n: '吸花蜜',   e: '🌼', pow: 1.1, drain: .5, pp: 3 },         { n: '蝶粉風暴', e: '🌪️', pow: 1.7, foe: { atk: .8 }, pp: 2 }],
     dino:   [{ n: '岩石皮膚', e: '🪨', self: { def: 1.6 }, pp: 2 },  { n: '尾巴掃擊', e: '💫', pow: 1.3, foe: { def: .75 }, pp: 3 }, { n: '遠古衝撞', e: '💥', pow: 2.2, pp: 1 }],
-    ghost:  [{ n: '嚇一跳',   e: '😱', foe: { atk: .75 }, pp: 2 },   { n: '靈魂吸取', e: '👻', pow: 1.1, drain: .5, pp: 3 },         { n: '星爆',     e: '🌟', pow: 2.1, pp: 1 }]
+    ghost:  [{ n: '嚇一跳',   e: '😱', foe: { atk: .75 }, pp: 2 },   { n: '靈魂吸取', e: '👻', pow: 1.1, drain: .5, pp: 3 },         { n: '星爆',     e: '🌟', pow: 2.1, pp: 1 }],
+    fox:    [{ n: '幻影分身', e: '💨', self: { spd: 1.6 }, pp: 2 },  { n: '狐火連彈', e: '🔥', pow: .85, hits: 2, pp: 3 },           { n: '極光審判', e: '🌌', pow: 2.3, pp: 1 }],
+    wolf:   [{ n: '月下嚎叫', e: '🌕', self: { atk: 1.3 }, pp: 2 },  { n: '影牙',     e: '🦷', pow: 1.2, drain: .5, pp: 3 },         { n: '蝕月',     e: '🌑', pow: 1.6, crit: true, pp: 2 }]
 };
 const STAT_NAME = { atk: '攻擊', def: '防禦', spd: '速度' };
 function skillsOf(species, lv) { return (SKILLS[species] || []).filter((_, i) => lv >= SKILL_LV[i]); }
@@ -462,7 +480,8 @@ function skillDesc(sk) {
 // 用愛吃主題的單字餵牠會記在 m.ate，每吃 10 個全能力 +1%（最多 +10%）
 const SP_FAV = {
     dragon: ['food', 'game', 'work'],     sea:   ['travel', 'health', 'nature'], cat:  ['daily', 'home', 'fun'],        bird:  ['travel', 'transit', 'social'],
-    bunny:  ['shop', 'feel', 'fashion'],  bug:   ['school', 'nature', 'art'],    dino: ['school', 'science', 'money'],  ghost: ['travel', 'tech', 'law']
+    bunny:  ['shop', 'feel', 'fashion'],  bug:   ['school', 'nature', 'art'],    dino: ['school', 'science', 'money'],  ghost: ['travel', 'tech', 'law'],
+    fox:    ['daily', 'art', 'social'],   wolf:  ['food', 'nature', 'law']
 };
 const FAV_STEP = 10, FAV_MAX = 0.10, SNACK_DAILY = 8;
 function favRegions(m) { return (SP_FAV[m?.species] || []).map(regionMeta); }
@@ -614,7 +633,7 @@ function collectList() {
         ...SPECIES.map(s => ({ id: 'all_' + s.id, icon: s.forms[2].e, name: `${s.name}全收集`, desc: `收齊${s.name}的 5 個型態`, v: () => formsFound(s), goal: 5, r: { coins: 100, shards: 5 } })),
         { id: 'forms10', icon: '📗', name: '型態收藏 10', desc: '發現 10 個怪獸型態', v: totalForms, goal: 10, r: { coins: 80, furn: 'circus' } },
         { id: 'forms25', icon: '📘', name: '型態收藏 25', desc: '發現 25 個怪獸型態', v: totalForms, goal: 25, r: { shards: 10, title: '怪獸收藏家' } },
-        { id: 'forms40', icon: '📕', name: '型態全制霸', desc: '發現全部 40 個怪獸型態', v: totalForms, goal: 40, r: { shards: 20, furn: 'statue', title: '怪獸博士' } },
+        { id: 'forms40', icon: '📕', name: '型態收藏 40', desc: '發現 40 個怪獸型態', v: totalForms, goal: 40, r: { shards: 20, furn: 'statue', title: '怪獸博士' } },
         { id: 'allsp',   icon: '🌈', name: '八族齊聚',   desc: '8 個種族都養過', v: () => new Set(S.mons.map(m => m.species)).size, goal: 8, r: { furn: 'rainbow', title: '種族大師' } },
         { id: 'shiny',   icon: '✨', name: '閃光夥伴',   desc: '擁有 1 隻閃光色怪獸', v: () => S.mons.filter(m => m.shiny).length, goal: 1, r: { shards: 3, title: '閃光獵人' } },
         { id: 'star5',   icon: '🌟', name: '完全覺醒',   desc: '把 1 隻怪獸覺醒到 5 星', v: () => Math.max(0, ...S.mons.map(starsOf)), goal: 5, r: { furn: 'crystal', title: '覺醒者' } },
@@ -663,8 +682,33 @@ function claimCollect(id) {
 }
 function setTitle(t) { S.title = t; save(); openCollect(); }
 
+function checkLegends() {
+    for (const L of LEGENDS) {
+        if (S.legend[L.sp]) continue;
+        let v = 0;
+        try { v = L.v(); } catch {}
+        if (v < L.goal) continue;
+        S.legend[L.sp] = Date.now();
+        S.eggs.push({ id: Math.random().toString(36).slice(2, 9), species: L.sp, progress: 0, need: LEGEND_EGG_NEED, legend: true });
+        G.modalQueue.push(() => legendModal(L));
+        setTimeout(runModalQueue, 1200);
+    }
+}
+function legendModal(L) {
+    const sp = SPECIES.find(x => x.id === L.sp);
+    playSound('win'); burst(); setTimeout(burst, 300);
+    showModal(`<div class="card p-7 modal text-center">
+        <div class="text-sm font-black" style="color:${sp.color}">🌟 傳說的蛋出現了！</div>
+        <div class="text-8xl my-5 wiggle" style="animation-iteration-count:infinite;${eggStyle(sp)}">🥚</div>
+        <div class="text-2xl font-black">${sp.type}・${sp.name}</div>
+        <p class="mt-2 text-sm" style="color:var(--muted)">你達成了「${L.need}」，一顆散發光芒的蛋出現在牧場。<br>再答對 ${LEGEND_EGG_NEED} 題，牠就會孵化！</p>
+        <button class="btn w-full mt-5" style="--c:${sp.color};--cd:${sp.color}" onclick="closeModal(); render()">太神奇了</button>
+    </div>`);
+}
+
 function checkAchievements() {
     if (!S.mons?.length) return;
+    checkLegends();
     for (const c of collectList()) {
         if (S.collect[c.id] || S.collectNote[c.id]) continue;
         let v = 0;
@@ -868,7 +912,7 @@ function defaultState() {
         progress: {}, dex: {},
         daily: { date: dateStr(), caught: 0, stages: 0, reviews: 0, claimed: [] },
         totals: { correct: 0, answered: 0 },
-        stats: {}, ach: {}, arena: { rank: 0, wins: 0, losses: 0, trophies: 0 }, forms: {}, shards: 0, trips: [], furn: [], placed: [], collect: {}, collectNote: {}, titles: [], title: '',
+        stats: {}, ach: {}, arena: { rank: 0, wins: 0, losses: 0, trophies: 0 }, forms: {}, shards: 0, trips: [], furn: [], placed: [], collect: {}, collectNote: {}, titles: [], title: '', legend: {},
         legacy: []
     };
 }
@@ -889,7 +933,7 @@ function migrate(saved) {
     if (!saved || typeof saved !== 'object') return null;
     if (saved.v === 3) {
         return { ...base, ...saved, foods: { ...base.foods, ...saved.foods }, daily: { ...base.daily, ...saved.daily }, totals: { ...base.totals, ...saved.totals },
-            stats: { ...saved.stats }, ach: { ...saved.ach }, arena: { ...base.arena, ...saved.arena }, collect: { ...saved.collect }, collectNote: { ...saved.collectNote } };
+            stats: { ...saved.stats }, ach: { ...saved.ach }, arena: { ...base.arena, ...saved.arena }, collect: { ...saved.collect }, collectNote: { ...saved.collectNote }, legend: { ...saved.legend } };
     }
     if (saved.v === 2) {
         const m = saved.monster || {};
@@ -1072,7 +1116,9 @@ const ACC_POS = {
     bunny:  [[36, 60, 39, 7, 33, 35, 55], [30, 45, 31, 3, 30, 26, 42], [34, 52, 27, 3, 33, 28, 36]],
     bug:    [[37, 49, 42, 2, 36, 23, 62], [36, 52, 40, 10, 38, 22, 50], [37, 46, 24, 4, 38, 30, 34]],
     dino:   [[43, 42, 44, 6, 45, 16, 65], [29, 29, 30, 13, 30, 10, 42], [40, 30, 26, 8, 37, 11, 40]],
-    ghost:  [[43, 50, 38, 12, 46, 23, 60], [43, 53, 34, 9, 50, 17, 60], [41, 38, 32, 0, 40, 18, 50]]
+    ghost:  [[43, 50, 38, 12, 46, 23, 60], [43, 53, 34, 9, 50, 17, 60], [41, 38, 32, 0, 40, 18, 50]],
+    fox:    [[36, 57, 42, 2, 33, 27, 55], [33, 56, 34, 3, 30, 30, 44], [35, 56, 24, 5, 34, 38, 30]],
+    wolf:   [[39, 52, 38, 0, 38, 25, 55], [35, 30, 30, 8, 38, 13, 40], [26, 37, 26, 0, 28, 17, 36]]
 };
 // 每種配件的大小與擺法：s = 相對眼寬（臉部）或頭寬（頭部）的比例；up = 往上抬多少個自身高度；dx/dy = 以頭寬／眼寬為單位的位移
 // 分支最終型態的錨點（格式同上）
@@ -1084,7 +1130,9 @@ const ACC_ALT = {
     bunny:  { guard: [41, 39, 28, 12, 44, 20, 40], battle: [41, 54, 32, -3, 42, 32, 46] },
     bug:    { guard: [35, 43, 32, 10, 41, 21, 46], battle: [47, 52, 34, -9, 55, 30, 44] },
     dino:   { guard: [27, 45, 32, 0, 28, 24, 44],  battle: [26, 35, 36, -8, 33, 14, 44] },
-    ghost:  { guard: [36, 41, 32, 10, 40, 19, 46], battle: [42, 45, 36, 0, 42, 23, 44] }
+    ghost:  { guard: [36, 41, 32, 10, 40, 19, 46], battle: [42, 45, 36, 0, 42, 23, 44] },
+    fox:    { guard: [51, 44, 28, 0, 50, 22, 40],  battle: [34, 62, 26, 0, 36, 44, 34] },
+    wolf:   { guard: [39, 36, 26, -3, 39, 17, 34], battle: [39, 50, 28, 0, 37, 32, 38] }
 };
 const ACC_FIT = {
     glasses: { s: 1.2 }, shades: { s: 1.2 }, scarf: { s: .8, dy: .55 },
@@ -2076,7 +2124,7 @@ function renderDex() {
             const b = best[s.id] ?? -1;
             const cells = [...s.forms.map((f, i) => [f, i < 2 ? i <= b : alts(s).includes('base'), `Lv.${FORM_LV[i]}`]), ...['guard', 'battle'].map(k => [s.alt[k], alts(s).includes(k), branchMeta(k).icon + branchMeta(k).name])];
             return `<div class="card p-3" style="${b >= 0 ? `background:${s.tint}` : ''}">
-                <div class="flex items-baseline gap-2 mb-2"><div class="font-black text-sm">${b >= 0 ? s.name : '???'}</div><div class="text-xs" style="color:${b >= 0 ? s.color : 'var(--muted)'}">${b >= 0 ? s.type : (s.rare ? '稀有種族' : '尚未發現')}</div></div>
+                <div class="flex items-baseline gap-2 mb-2"><div class="font-black text-sm">${b >= 0 ? s.name : '???'}</div><div class="text-xs" style="color:${b >= 0 ? s.color : 'var(--muted)'}">${b >= 0 ? s.type : s.legend ? `🌟 傳說種族・${LEGENDS.find(L => L.sp === s.id).need}` : (s.rare ? '稀有種族' : '尚未發現')}</div></div>
                 <div class="grid grid-cols-5 gap-1 text-center">${cells.map(([f, ok, hint]) => `<div><div class="text-3xl" style="${ok ? '' : 'filter:brightness(0);opacity:.15'}">${f.e}</div><div class="text-[10px]" style="color:var(--muted)">${ok ? f.n : hint}</div></div>`).join('')}</div>
             </div>`; }).join('')}</div>`;
         return;
@@ -2373,7 +2421,7 @@ function openShop() {
             <p class="text-xs mt-1" style="color:var(--muted)">優先孵出你還沒有的種族，還有機會出現稀有的星際幽靈族或閃光色！<br>答對 ${EGG_NEED} 題就會孵化。孵蛋器最多放 ${MAX_EGGS} 顆。</p>
             <button class="btn orange mt-3" onclick="buyEgg()">🪙 ${EGG_PRICE} 購買（孵蛋器 ${S.eggs.length}/${MAX_EGGS}）</button>
         </div>
-        <div class="grid grid-cols-4 gap-2 mt-3">${SPECIES.map(s => { const known = S.seen.includes(s.id) || S.mons.some(x => x.species === s.id); return `<div class="text-center"><div class="text-2xl" style="${known ? '' : 'filter:brightness(0);opacity:.2'}">${s.forms[0].e}</div><div class="text-[10px]" style="color:var(--muted)">${known ? s.name : '???'}</div></div>`; }).join('')}</div>`;
+        <div class="grid grid-cols-5 gap-1 mt-3">${SPECIES.map(s => { const known = S.seen.includes(s.id) || S.mons.some(x => x.species === s.id); return `<div class="text-center"><div class="text-2xl" style="${known ? '' : 'filter:brightness(0);opacity:.2'}">${s.forms[0].e}</div><div class="text-[10px]" style="color:var(--muted)">${known ? s.name : '???'}</div></div>`; }).join('')}</div>`;
     }
     showModal(`<div class="card p-5 modal">
         <div class="flex items-center justify-between mb-3"><h3 class="text-xl font-black">🛍️ 商店</h3><span class="pill" style="background:#fff6d6;color:#a67c00">🪙 ${S.coins}</span></div>
@@ -3013,7 +3061,7 @@ function flipCard(i) {
 // ============================================================
 // ⚔️ 怪獸對戰競技場（離線，題目來自圖鑑）
 // ============================================================
-const SP_EL = { dragon: 'fire', sea: 'water', cat: 'night', bird: 'wind', bunny: 'dream', bug: 'grass', dino: 'rock', ghost: 'star' };
+const SP_EL = { dragon: 'fire', sea: 'water', cat: 'night', bird: 'wind', bunny: 'dream', bug: 'grass', dino: 'rock', ghost: 'star', fox: 'light', wolf: 'shadow' };
 const ELEM = {
     fire:  { n: '火', e: '🔥', beats: ['grass', 'star'] },
     water: { n: '水', e: '💧', beats: ['fire', 'rock'] },
@@ -3022,15 +3070,20 @@ const ELEM = {
     rock:  { n: '岩', e: '🪨', beats: ['fire', 'wind'] },
     night: { n: '夜', e: '🌙', beats: ['dream', 'star'] },
     dream: { n: '夢', e: '🌈', beats: ['night', 'water'] },
-    star:  { n: '星', e: '⭐', beats: ['night', 'wind'] }
+    star:  { n: '星', e: '⭐', beats: ['night', 'wind'] },
+    light:  { n: '光', e: '☀️', beats: ['night', 'shadow'] },
+    shadow: { n: '影', e: '🌑', beats: ['dream', 'star'] }
 };
 const TRAINERS = [
     { name: '新手小明',   lv: 2,  sp: 'bug',    sp2: 'bird' },  { name: '甜點師小美', lv: 3,  sp: 'bunny', sp2: 'cat' },
     { name: '登山客阿強', lv: 4,  sp: 'dino',   sp2: 'sea' },   { name: '游泳選手莉莉', lv: 5, sp: 'sea',  sp2: 'bunny' },
     { name: '夜貓子大雄', lv: 6,  sp: 'cat',    sp2: 'dragon' }, { name: '飛行教練 Max', lv: 7, sp: 'bird', sp2: 'bug' },
     { name: '火焰雙胞胎', lv: 8,  sp: 'dragon', sp2: 'dino' },  { name: '幽靈少女 Mia', lv: 10, sp: 'ghost', sp2: 'sea' },
-    { name: '冠軍候補 Leo', lv: 12, sp: 'dino', sp2: 'ghost' }, { name: '競技場冠軍 Aurora', lv: 14, sp: 'dragon', sp2: 'sea' }
+    { name: '冠軍候補 Leo', lv: 12, sp: 'dino', sp2: 'ghost' }, { name: '競技場冠軍 Aurora', lv: 14, sp: 'dragon', sp2: 'sea' },
+    // 冠軍之後的傳說挑戰者（給覺醒後的怪獸打）
+    { name: '極光巫女 Sol', lv: 18, sp: 'fox', sp2: 'ghost' },   { name: '影之王 Nyx', lv: 22, sp: 'wolf', sp2: 'fox' }
 ];
+const CHAMPION = 9;   // 打敗這一位就是競技場冠軍
 // 雙打：在競技場選一隻搭檔（S.arena.buddy）就變成 2 對 2，對手也會多派一隻（sp2）。可以花一回合換手，倒下會自動換
 function arenaBuddy() {
     const m = S.mons.find(x => x.id === S.arena.buddy);
@@ -3379,7 +3432,8 @@ function endBattle(win) {
         cheer(15); addAffection(2);
         // 搭檔也拿到一半經驗，並增加親密度
         if (duo) { const mate = b.team[1].m; addMonsterXP(Math.ceil((first ? 10 + b.i * 4 : 5) / 2), mate); cheer(10, mate); addAffection(1, mate); }
-        if (first && b.i === TRAINERS.length - 1) extra = '<div class="mt-4 p-3 rounded-2xl font-black" style="background:#fff1c2;color:#8a6500">🥇 你成為了競技場冠軍！</div>';
+        if (first && b.i === CHAMPION) extra = '<div class="mt-4 p-3 rounded-2xl font-black" style="background:#fff1c2;color:#8a6500">🥇 你成為了競技場冠軍！傳說挑戰者出現了…</div>';
+        else if (first && b.i === TRAINERS.length - 1) extra = '<div class="mt-4 p-3 rounded-2xl font-black" style="background:#fff1c2;color:#8a6500">👑 你打敗了所有傳說挑戰者！</div>';
         else if (first && TRAINERS[b.i + 1]) extra = `<div class="mt-4 p-3 rounded-2xl font-black" style="background:var(--green-t);color:var(--green-d)">🔓 新對手：${esc(TRAINERS[b.i + 1].name)}</div>`;
         playSound('win'); burst();
     } else {
