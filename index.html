@@ -476,12 +476,12 @@ function skillDesc(sk) {
     return a.join('・');
 }
 
-// 單字餵養：每族有 3 個愛吃的主題（每族至少一個在前 5 區，一開始就吃得到）。
+// 單字餵養：每族有 3 個愛吃的主題。初始三隻（龍、海、貓）都愛吃第一區「日常草原」，一開始就吃得到；20 區每區至少有一族愛吃。
 // 用愛吃主題的單字餵牠會記在 m.ate，每吃 10 個全能力 +1%（最多 +10%）
 const SP_FAV = {
-    dragon: ['food', 'game', 'work'],     sea:   ['travel', 'health', 'nature'], cat:  ['daily', 'home', 'fun'],        bird:  ['travel', 'transit', 'social'],
+    dragon: ['daily', 'food', 'game'],    sea:   ['daily', 'travel', 'nature'],  cat:  ['daily', 'home', 'fun'],        bird:  ['travel', 'transit', 'social'],
     bunny:  ['shop', 'feel', 'fashion'],  bug:   ['school', 'nature', 'art'],    dino: ['school', 'science', 'money'],  ghost: ['travel', 'tech', 'law'],
-    fox:    ['daily', 'art', 'social'],   wolf:  ['food', 'nature', 'law']
+    fox:    ['health', 'art', 'social'],  wolf:  ['work', 'nature', 'law']
 };
 const FAV_STEP = 10, FAV_MAX = 0.10, SNACK_DAILY = 8;
 function favRegions(m) { return (SP_FAV[m?.species] || []).map(regionMeta); }
@@ -682,6 +682,38 @@ function claimCollect(id) {
 }
 function setTitle(t) { S.title = t; save(); openCollect(); }
 
+// 階段性提示：條件第一次成立時跳一次說明。舊存檔第一次載入時，已經成立的會直接標成看過（見檔尾的初始化）
+const TIPS = [
+    { id: 'fav', icon: '😋', title: '怪獸有愛吃的單字！', when: () => Object.keys(S.dex).length >= 5,
+      lines: ['每一族都有 3 個愛吃的主題，冒險地圖上會標 😋', '在那些地方抓到的單字牠會直接吃掉，經驗更多', '「餵食」裡還有單字點心：答對意思就能餵牠', '每吃 10 個，全能力永久 +1%'] },
+    { id: 'arena', icon: '⚔️', title: '學會技能了，去競技場試試！', when: () => S.mons.some(m => levelInfo(m).lv >= 3),
+      lines: ['小屋下方的「競技場」可以和訓練師對戰', '答對單字題才能出招，越強的招式題目越難', 'Lv.6、Lv.9 還會學到新技能', '屬性相剋很重要，打不贏可以換一隻夥伴'], act: ['去競技場', 'openArena()'] },
+    { id: 'second', icon: '🏡', title: '牧場有第二隻怪獸了！', when: () => S.mons.length >= 2,
+      lines: ['牧場右上角的「探險」可以派牠出門，回來會帶禮物', '競技場可以選牠當搭檔，變成 2 對 2 的雙打', '牠也會跑來小屋找夥伴聊天，點牠看看'], act: ['派去探險', 'openTrips()'] },
+    { id: 'final', icon: '🧬', title: '最終型態！還能繼續變強', when: () => S.mons.some(isFinal),
+      lines: ['最終型態有 3 條路線：智慧、守護、戰鬥', '親密度到 80、或贏 5 場競技場，就能解鎖其他型態', '點怪獸名字 ›「進化」分頁可以切換', '「成長」分頁可以用覺醒結晶 💎 升星'] },
+    { id: 'shard', icon: '💎', title: '拿到覺醒結晶了！', when: () => (S.shards || 0) > 0,
+      lines: ['結晶可以讓最終型態（Lv.10）的怪獸覺醒升星', '每一星全能力 +6%，最多 5 星', '來源：訂正錯題、打倒魔王、競技場勝利、探險'] }
+];
+function checkTips() {
+    if (!S.tips || G.tipQueued) return;
+    const t = TIPS.find(x => { try { return !S.tips[x.id] && x.when(); } catch { return false; } });
+    if (!t) return;
+    S.tips[t.id] = 1;
+    G.tipQueued = true;
+    G.modalQueue.push(() => {
+        G.tipQueued = false;
+        playSound('pop');
+        showModal(`<div class="card p-6 modal text-center">
+            <div class="text-6xl">${t.icon}</div>
+            <div class="text-xl font-black mt-2">${t.title}</div>
+            <div class="text-left mt-3 space-y-1.5">${t.lines.map(l => `<div class="flex gap-2 text-sm"><span>•</span><span>${l}</span></div>`).join('')}</div>
+            <div class="flex gap-2 mt-5"><button class="btn white flex-1" onclick="closeModal()">知道了</button>${t.act ? `<button class="btn flex-1" onclick="closeModal(); ${t.act[1]}">${t.act[0]}</button>` : ''}</div>
+        </div>`);
+    });
+    setTimeout(runModalQueue, 1500);
+}
+
 function checkLegends() {
     for (const L of LEGENDS) {
         if (S.legend[L.sp]) continue;
@@ -709,6 +741,7 @@ function legendModal(L) {
 function checkAchievements() {
     if (!S.mons?.length) return;
     checkLegends();
+    checkTips();
     for (const c of collectList()) {
         if (S.collect[c.id] || S.collectNote[c.id]) continue;
         let v = 0;
@@ -912,7 +945,7 @@ function defaultState() {
         progress: {}, dex: {},
         daily: { date: dateStr(), caught: 0, stages: 0, reviews: 0, claimed: [] },
         totals: { correct: 0, answered: 0 },
-        stats: {}, ach: {}, arena: { rank: 0, wins: 0, losses: 0, trophies: 0 }, forms: {}, shards: 0, trips: [], furn: [], placed: [], collect: {}, collectNote: {}, titles: [], title: '', legend: {},
+        stats: {}, ach: {}, arena: { rank: 0, wins: 0, losses: 0, trophies: 0 }, forms: {}, shards: 0, trips: [], furn: [], placed: [], collect: {}, collectNote: {}, titles: [], title: '', legend: {}, tips: null,
         legacy: []
     };
 }
@@ -961,6 +994,8 @@ function loadState() {
 }
 
 const S = loadState();
+// 提示紀錄：舊存檔第一次載入時，把已經成立的提示直接標成看過，免得一次跳一堆（TIPS 在後面才定義，所以延後執行）
+setTimeout(() => { if (!S.tips) { S.tips = {}; if (S.mons.length) TIPS.forEach(t => { try { if (t.when()) S.tips[t.id] = 1; } catch {} }); } }, 0);
 let apiKey = safeGet(KEY_STORE) || '';
 let model = safeGet(MODEL_STORE) || DEFAULT_MODEL;
 const G = { tab: 'home', mapRegion: null, dexRegion: 'all', dexQuery: '', dexMode: 'words', shopTab: 'food', play: null, modalQueue: [], modalOpen: false, prefetch: {}, chat: { scenario: CHAT_SCENARIOS[0], history: [], busy: false, started: false } };
@@ -1400,6 +1435,29 @@ function renameMonster(id) {
     if (name && name.trim()) { m.name = name.trim().slice(0, 8); save(); render(); if (G.modalOpen) openMon(m.id); }
 }
 
+// 小屋的「現在可以做什麼」：把散在各處、現在就能做的事列出來（最多 4 項）
+function todoList() {
+    const m = activeMon(), out = [];
+    if (!m) return out;
+    const add = (icon, text, act) => out.push({ icon, text, act });
+    if (tripsDone()) add('🧭', '探險隊回來了，去領禮物', 'openTrips()');
+    const egg = S.eggs.find(e => e.progress >= e.need);
+    if (egg) add('🥚', '有蛋可以孵化了', `hatchEgg('${egg.id}')`);
+    const ready = collectReady();
+    if (ready) add('🎁', `有 ${ready} 個收集獎勵可以領`, 'openCollect()');
+    if (satiety(m) < 30) add('🍖', `${m.name} 肚子餓了`, 'openFood()');
+    else if (mood(m) < 30) add('🎾', `${m.name} 想要玩`, 'openGames()');
+    const grow = S.mons.find(canAwaken);
+    if (grow) add('🌟', `${grow.name} 可以覺醒了`, `showMon('${grow.id}','grow')`);
+    const sw = S.mons.find(x => isFinal(x) && BRANCHES.some(b => branchScore(x, b.id) >= 1 && branchOf(x) !== b.id && !S.forms[`${x.species}_${b.id}`]));
+    if (sw) add('🧬', `${sw.name} 可以變成新的型態`, `showMon('${sw.id}','evo')`);
+    const snacks = snacksLeft(m) > 0 ? snackWords(m).length : 0;
+    if (snacks) add('😋', `有 ${snacks} 個愛吃的單字可以餵 ${m.name}`, 'openFood()');
+    if (S.trips.length < TRIP_MAX && S.mons.some(x => x.id !== S.active && !tripOf(x.id))) add('🗺️', '牧場有怪獸閒著，可以派去探險', 'openTrips()');
+    const nf = nextForm(m);
+    if (nf) add('⬆️', `${m.name} 再升 ${nf.lv - levelInfo(m).lv} 級就會進化`, 'goAdventure()');
+    return out.slice(0, 4);
+}
 function tripOf(id) { return (S.trips || []).find(t => t.mon === id); }
 function tripLeft(t) { return t.start + TRIPS.find(x => x.id === t.place).min * 60000 - Date.now(); }
 function fmtLeft(ms) { const m = Math.ceil(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)} 小時${m % 60 ? ` ${m % 60} 分` : ''}` : `${m} 分鐘`; }
@@ -1506,22 +1564,35 @@ function setActive(id) {
     toast(`${formOf(m).e} ${m.name} 成為你的冒險夥伴！`, 'good');
 }
 
+// 從小屋、牧場點進來：回到第一個分頁。其他地方（切換型態、覺醒後重畫）直接呼叫 openMon 保留目前分頁
+function showMon(id, tab = 'info') { G.monTab = tab; openMon(id); }
+function canAwaken(m) { return isFinal(m) && starsOf(m) < AWAKEN_COST.length && (S.shards || 0) >= AWAKEN_COST[starsOf(m)]; }
 function openMon(id) {
     const m = S.mons.find(x => x.id === id);
     if (!m) return;
     const sp = speciesOf(m), tr = traitOf(m), li = levelInfo(m);
     const fi = formIdx(li.lv);
+    const tab = ['info', 'evo', 'grow'].includes(G.monTab) ? G.monTab : 'info';
+    // 分頁上的橘點：有新型態可以切換、可以覺醒或有單字點心可餵
+    const canSwitch = fi === 2 && BRANCHES.some(b => branchScore(m, b.id) >= 1 && branchOf(m) !== b.id && !S.forms[`${sp.id}_${b.id}`]);
+    const canGrow = canAwaken(m) || (m.id === S.active && snacksLeft(m) > 0 && snackWords(m).length > 0);
     showModal(`<div class="card p-5 modal text-center">
         <div class="text-xs font-black" style="color:${sp.color}">${sp.type} · ${sp.name}${m.shiny ? ' · ✨ 閃光色' : ''}</div>
         <div class="py-4" style="background:${sp.tint};border-radius:20px;margin-top:8px">${monsterHTML(96, false, m)}</div>
         <button class="border-0 bg-transparent text-2xl font-black mt-3" onclick="renameMonster('${m.id}')">${esc(m.name)} <span class="text-sm" style="color:var(--muted)">✏️</span></button>
         <div class="text-sm" style="color:var(--muted)">Lv.${li.lv} ${formOf(m).n}${starsOf(m) ? ` <b style="color:var(--gold)">${starText(m)}</b>` : ''}</div>
+        <div class="grid grid-cols-3 gap-1 p-1 rounded-2xl mt-3" style="background:#e3ebdf">
+            ${[['info', '📋 資料', false], ['evo', '🧬 進化', canSwitch], ['grow', '🌱 成長', canGrow]].map(([k, l, dot]) => `<button class="py-1.5 rounded-xl font-black text-sm border-0" style="${tab === k ? 'background:#fff;box-shadow:0 2px 0 var(--line)' : 'background:transparent;color:var(--muted)'}" onclick="G.monTab='${k}'; openMon('${m.id}')">${l}${dot ? ' <span style="color:var(--orange)">●</span>' : ''}</button>`).join('')}
+        </div>
+        ${tab === 'info' ? `
         <div class="flex justify-center gap-2 mt-3 flex-wrap">
             <span class="pill" style="background:var(--purple-t);color:var(--purple-d)">${tr.icon} ${tr.name}：${tr.desc}</span>
             <span class="pill" style="background:var(--red-t);color:var(--red-d)">${'❤️'.repeat(hearts(m)) || '🤍'} 親密 ${m.affection}</span>
         </div>
         <div class="grid grid-cols-4 gap-1 mt-3 text-center">${(st => [['❤️', 'HP', st.max], ['⚔️', '攻擊', st.atk], ['🛡️', '防禦', st.def], ['💨', '速度', st.spd]])(monBattleStats(m)).map(([e, n, v]) => `<div class="py-1.5 rounded-xl" style="background:#f3f6f1"><div class="text-[10px]" style="color:var(--muted)">${e} ${n}</div><div class="font-black">${v}</div></div>`).join('')}</div>
         <div class="grid grid-cols-3 gap-1 mt-1 text-center">${SKILLS[sp.id].map((sk, i) => { const ok = li.lv >= SKILL_LV[i]; return `<div class="py-1.5 px-1 rounded-xl" style="background:${ok ? 'var(--blue-t)' : '#f3f6f1'}"><div class="text-xs font-black">${ok ? `${sk.e} ${sk.n}` : `🔒 Lv.${SKILL_LV[i]}`}</div><div class="text-[10px] leading-tight" style="color:var(--muted)">${ok ? skillDesc(sk) : '還沒學會'}</div></div>`; }).join('')}</div>
+        ` : ''}
+        ${tab === 'evo' ? `
         <div class="flex items-end justify-center gap-3 mt-5">${sp.forms.map((f0, i) => { const f = i === 2 && fi === 2 ? formOf(m) : f0; return `
             <div class="text-center"><div class="text-4xl" style="${i <= fi ? emojiStyle(m) : 'filter:brightness(0);opacity:.2'}">${i === 2 && fi < 2 ? '❓' : f.e}</div>
             <div class="text-xs mt-1" style="color:${i <= fi ? 'var(--ink)' : 'var(--muted)'}">${i <= fi ? f.n : '???'}</div><div class="text-[10px]" style="color:var(--muted)">Lv.${FORM_LV[i]}</div></div>
@@ -1541,6 +1612,8 @@ function openMon(id) {
                 ${on ? `<div class="text-[10px] font-black mt-1" style="color:${sp.color}">目前型態</div>` : can ? '<div class="text-[10px] font-black mt-1" style="color:var(--blue-d)">點一下切換</div>' : ''}
             </div>`; }).join('')}
         </div>
+        ` : ''}
+        ${tab === 'grow' ? `
         <button class="mt-4 p-3 rounded-2xl text-left w-full" style="background:var(--orange-t);border:2px solid #ffd3b0" onclick="ateModal('${m.id}')">
             <div class="flex items-center justify-between"><div class="font-black">🍽️ 愛吃的單字</div><span class="pill" style="background:#fff;color:var(--orange-d)">已吃 ${ateCount(m)}・能力 +${Math.round(favBonus(m) * 100)}%</span></div>
             <div class="text-xs mt-1" style="color:var(--muted)">${favRegions(m).map(r => `${r.emoji}${r.name}`).join('、')}。帶牠去這些地方抓單字，或用「餵食」餵單字點心 ›</div>
@@ -1553,6 +1626,7 @@ function openMon(id) {
                 <div class="text-xs mt-1" style="color:var(--muted)">${fi < 2 ? `Lv.${FORM_LV[2]} 進化到最終型態後開放。` : next + '。'}覺醒結晶來自訂正錯題、打倒魔王、競技場勝利、孵出已有的種族</div>
                 ${fi === 2 && n < max ? `<button class="btn orange w-full mt-2 sm" ${have >= cost ? '' : 'disabled'} onclick="awaken('${m.id}')">覺醒（💎 ${cost}）</button>` : ''}
             </div>`; })()}
+        ` : ''}
         <div class="flex gap-2 mt-5">
             <button class="btn white flex-1" onclick="closeModal()">關閉</button>
             ${m.id === activeMon().id ? '<button class="btn flex-[2]" disabled>目前的夥伴</button>' : tripOf(m.id) ? '<button class="btn flex-[2]" disabled>🧭 探險中</button>' : `<button class="btn flex-[2]" onclick="setActive('${m.id}')">設為冒險夥伴</button>`}
@@ -1919,7 +1993,7 @@ function renderHomeStats() {
     el.innerHTML = `
         <div class="text-center">
             ${S.title ? `<div><span class="pill text-[11px]" style="background:var(--purple-t);color:var(--purple-d)">🏷️ ${esc(S.title)}</span></div>` : ''}
-            <button onclick="openMon('${m.id}')" class="border-0 bg-transparent text-xl font-black">${esc(m.name)} <span class="text-sm" style="color:var(--muted)">ⓘ</span></button>
+            <button onclick="showMon('${m.id}')" class="border-0 bg-transparent text-xl font-black">${esc(m.name)} <span class="text-sm" style="color:var(--muted)">ⓘ</span></button>
             <div class="text-sm" style="color:var(--muted)">Lv.${li.lv} ${formOf(m).n} · ${traitOf(m).icon}${traitOf(m).name}${nf ? ` · Lv.${nf.lv} 進化` : ` · ${branchMeta(branchOf(m)).icon}${branchMeta(branchOf(m)).name}`}${starsOf(m) ? ` <b style="color:var(--gold)">${starText(m)}</b>` : ''}</div>
         </div>
         <div class="grid grid-cols-2 gap-x-3 gap-y-2.5 mt-3">
@@ -1961,11 +2035,16 @@ function renderHome() {
         <button class="btn w-full mt-4 text-lg relative" style="--c:${r.c};--cd:${r.cd}" onclick="goAdventure()">🎯 去抓單字</button>
     </div>
 
+    ${(list => list.length ? `<div class="card p-3 mt-4">
+        <div class="font-black text-sm mb-2">✅ 現在可以做什麼</div>
+        <div class="space-y-1.5">${list.map(t => `<button class="w-full flex items-center gap-2 text-left p-2 rounded-xl border-0" style="background:#f3f6f1" onclick="${t.act}"><span class="text-xl">${t.icon}</span><span class="flex-1 text-sm font-black">${esc(t.text)}</span><span style="color:var(--muted)">›</span></button>`).join('')}</div>
+    </div>` : '')(todoList())}
+
     <div class="card p-4 mt-4">
         <div class="flex items-center justify-between mb-3"><h3 class="font-black text-lg">🏡 怪獸牧場 <span class="text-sm" style="color:var(--muted)">${S.mons.length} 隻</span></h3>
             <div class="flex gap-1.5"><button class="btn sm ${tripsDone() ? 'orange' : 'white'}" onclick="openTrips()">🧭 ${tripsDone() ? '探險回來了！' : `探險${S.trips?.length ? ` ${S.trips.length}` : ''}`}</button><button class="btn sm orange" onclick="G.shopTab='egg'; openShop()">🥚 買蛋</button></div></div>
         <div class="flex gap-2 overflow-x-auto noscroll -mx-1 px-1 pb-1">
-            ${S.mons.map(x => `<button class="mini ${x.id === m.id ? 'on' : ''} ${tripOf(x.id) ? 'away' : ''}" onclick="openMon('${x.id}')">
+            ${S.mons.map(x => `<button class="mini ${x.id === m.id ? 'on' : ''} ${tripOf(x.id) ? 'away' : ''}" onclick="showMon('${x.id}')">
                 <div class="text-3xl" style="${emojiStyle(x)}">${formOf(x).e}</div>
                 <div class="text-xs font-black truncate">${esc(x.name)}</div><div class="text-[10px]" style="color:var(--muted)">Lv.${levelInfo(x).lv}${x.id === m.id ? ' · 夥伴' : tripOf(x.id) ? ' · 🧭探險' : ''}</div></button>`).join('')}
             ${S.eggs.map(e => { const sp = SPECIES.find(s => s.id === e.species); const ready = e.progress >= e.need; return `<button class="mini" style="${ready ? 'border-color:var(--orange);background:var(--orange-t)' : ''}" onclick="hatchEgg('${e.id}')">
@@ -3063,14 +3142,14 @@ function flipCard(i) {
 // ============================================================
 const SP_EL = { dragon: 'fire', sea: 'water', cat: 'night', bird: 'wind', bunny: 'dream', bug: 'grass', dino: 'rock', ghost: 'star', fox: 'light', wolf: 'shadow' };
 const ELEM = {
-    fire:  { n: '火', e: '🔥', beats: ['grass', 'star'] },
+    fire:  { n: '火', e: '🔥', beats: ['grass', 'star', 'shadow'] },
     water: { n: '水', e: '💧', beats: ['fire', 'rock'] },
     grass: { n: '草', e: '🌿', beats: ['water', 'rock'] },
     wind:  { n: '風', e: '🌪️', beats: ['grass', 'dream'] },
     rock:  { n: '岩', e: '🪨', beats: ['fire', 'wind'] },
     night: { n: '夜', e: '🌙', beats: ['dream', 'star'] },
     dream: { n: '夢', e: '🌈', beats: ['night', 'water'] },
-    star:  { n: '星', e: '⭐', beats: ['night', 'wind'] },
+    star:  { n: '星', e: '⭐', beats: ['night', 'wind', 'light'] },
     light:  { n: '光', e: '☀️', beats: ['night', 'shadow'] },
     shadow: { n: '影', e: '🌑', beats: ['dream', 'star'] }
 };
