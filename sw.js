@@ -1,6 +1,6 @@
 // 單字怪獸 LinguaMon - Service Worker
 // 讓 App 可以安裝到手機，並在沒有網路時也能開啟（訓練場、小遊戲、競技場不需要 API）
-const VERSION = 'linguamon-v15';
+const VERSION = 'linguamon-v16';
 const SHELL = [
     './',
     './index.html',
@@ -24,11 +24,16 @@ const ART = [
     'boss_fun', 'boss_fashion', 'boss_art', 'boss_social', 'boss_game', 'boss_money',
     'boss_science', 'boss_law'
 ].map(n => `./art/${n}.webp`);
+// Q 版音效 9 個 + 怪獸說話聲（10 個種族各 3 句）
+const SOUND = [
+    ...['tap', 'pop', 'correct', 'combo', 'wrong', 'coin', 'win', 'levelup', 'fail'].map(n => `./sfx/${n}.mp3`),
+    ...['dragon', 'sea', 'cat', 'bird', 'bunny', 'bug', 'dino', 'ghost', 'fox', 'wolf'].flatMap(s => [0, 1, 2].map(i => `./voice/${s}_${i}.mp3`))
+];
 const RUNTIME = `${VERSION}-runtime`;
 const NEVER_CACHE = ['api.anthropic.com'];
 
 self.addEventListener('install', event => {
-    event.waitUntil(caches.open(VERSION).then(c => c.addAll([...SHELL, ...ART])).then(() => self.skipWaiting()));
+    event.waitUntil(caches.open(VERSION).then(c => c.addAll([...SHELL, ...ART, ...SOUND])).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', event => {

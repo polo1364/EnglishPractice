@@ -1231,7 +1231,9 @@ function pokeMonster(el) {
     }
     doAct(el, pick(['jump', 'spin', 'wiggle']));
     playSound('pop');
-    if (b) b.textContent = monsterSay();
+    const line = monsterSay();
+    if (b) b.textContent = line;
+    sayVoice(activeMon(), line);
 }
 
 // ---------- 小屋動畫 ----------
@@ -4253,9 +4255,39 @@ function speak(text, rate) {
     setTimeout(() => speechSynthesis.speak(u), 60);
 }
 
-let actx = null;
+// Q 版音效（sfx/*.mp3）：檔案放不出來時退回下面的合成音
+const SFX_VOL = { tap: .5, pop: .55, correct: .7, combo: .7, wrong: .6, coin: .65, win: .75, levelup: .75, fail: .7 };
+const sfxCache = {};
 function playSound(type) {
     if (!S.sound) return;
+    if (SFX_VOL[type] && sfxCache[type] !== false) {
+        try {
+            const base = sfxCache[type] || (sfxCache[type] = Object.assign(new Audio(`sfx/${type}.mp3`), { preload: 'auto' }));
+            const a = base.cloneNode();
+            a.volume = SFX_VOL[type];
+            a.play().catch(e => { if (e.name !== 'NotAllowedError') sfxCache[type] = false; synthSound(type); });
+            return;
+        } catch {}
+    }
+    synthSound(type);
+}
+
+// 怪獸說話聲（voice/種族_句子編號.mp3）：只有各種族自己的台詞有配音
+let voiceEl = null;
+function sayVoice(m, line) {
+    if (!S.sound || !m) return;
+    const i = speciesOf(m).say.indexOf(line);
+    if (i < 0) return;
+    try {
+        if (voiceEl) voiceEl.pause();
+        voiceEl = new Audio(`voice/${m.species}_${i}.mp3`);
+        voiceEl.volume = .9;
+        voiceEl.play().catch(() => {});
+    } catch {}
+}
+
+let actx = null;
+function synthSound(type) {
     try {
         actx = actx || new (window.AudioContext || window.webkitAudioContext)();
         const seq = {
