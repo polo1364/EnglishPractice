@@ -218,6 +218,12 @@
         .act .i { font-size: 1.6rem; line-height: 1.1; }
         .mini { flex-shrink: 0; width: 76px; text-align: center; padding: .5rem .2rem; border-radius: 16px; background: #fff; border: 2px solid var(--line); }
         .mini.on { border-color: var(--green); background: var(--green-t); }
+        .mini.away { opacity: .6; border-style: dashed; }
+        /* 小屋擺設與來串門子的怪獸 */
+        .furn { position: absolute; line-height: 1; pointer-events: none; filter: drop-shadow(0 4px 0 rgba(36, 51, 31, .1)); }
+        .visitor { position: absolute; right: 0; bottom: 6px; font-size: 46px; line-height: 1; cursor: pointer; border: 0; background: transparent; padding: 0; animation: bob 3s ease-in-out infinite; }
+        .visitor.hop { animation: hop .5s; }
+        .vis-bubble { position: absolute; right: 0; bottom: 74px; max-width: 150px; background: #fff; color: var(--ink); border: 2px solid var(--line); border-radius: 12px; padding: 3px 8px; font-size: 11px; font-weight: 800; line-height: 1.3; animation: pop .3s; pointer-events: none; z-index: 2; }
 
         /* ===== 進度條 ===== */
         .bar { height: 14px; background: #e3ebdf; border-radius: 999px; overflow: hidden; }
@@ -487,6 +493,31 @@ const SHOP = [
     { id: 'shades',  emoji: '🕶️', name: '墨鏡',     slot: 'face', price: 120 },
     { id: 'scarf',   emoji: '🧣', name: '羈絆圍巾', slot: 'face', price: 0, gift: true }
 ];
+// 小屋擺設：最多擺 3 件，每件讓心情下降慢 5%
+const FURN = [
+    { id: 'plant',  e: '🪴', name: '小盆栽',   price: 40 },  { id: 'balloon', e: '🎈', name: '氣球',     price: 50 },
+    { id: 'books',  e: '📚', name: '單字書堆', price: 60 },  { id: 'bear',    e: '🧸', name: '小熊玩偶', price: 80 },
+    { id: 'guitar', e: '🎸', name: '吉他',     price: 100 }, { id: 'sofa',    e: '🛋️', name: '軟沙發',   price: 120 },
+    { id: 'tent',   e: '⛺', name: '小帳篷',   price: 150 }, { id: 'trophy',  e: '🏆', name: '冠軍獎盃', price: 200 }
+];
+const FURN_MAX = 3;
+const FURN_POS = ['left:0;top:0;font-size:34px', 'right:2%;top:0;font-size:34px', 'left:0;bottom:6px;font-size:46px'];
+// 探險：派沒有在當夥伴的怪獸出門，時間到了帶回獎勵。shard 的整數部分必得、小數部分是機率
+const TRIPS = [
+    { id: 'forest', e: '🌳', n: '森林散步', min: 30,  coins: [15, 25],  xp: 10, aff: 1, food: 1, shard: 0 },
+    { id: 'beach',  e: '🏖️', n: '海邊尋寶', min: 120, coins: [40, 60],  xp: 30, aff: 2, food: 1, shard: .4 },
+    { id: 'peak',   e: '🏔️', n: '高山遠征', min: 360, coins: [90, 130], xp: 70, aff: 3, food: 2, shard: 2.5 }
+];
+const TRIP_MAX = 2;
+// 怪獸之間的對話：[來串門子的怪獸說, 夥伴回答]
+const CHATS = [
+    ['你今天學了什麼單字？', '學了好多，等等考你！'], ['我們來比賽誰跳得高！', '好啊，一、二、三，跳！'],
+    ['什麼時候換我去冒險？', '那要看誰比較努力囉'], ['肚子有點餓了…', '我也是，一起等點心吧'],
+    ['Good morning!', 'Good morning! How are you?'], ["What's your favorite word?", '"Adventure"！'],
+    ["Let's play together!", 'OK! 來玩！'], ['你剛剛的招式好帥', '嘿嘿，下次教你'],
+    ['這裡好舒服喔', '對吧，是我們的家'], ['我昨天夢到一個超長的單字', '該不會是 "congratulations" 吧？'],
+    ['See you later!', 'See you! 路上小心'], ['主人今天會來摸摸我們嗎？', '一定會的！']
+];
 const EGG_PRICE = 150;
 const EGG_NEED = 20;      // 答對幾題可孵化
 const MAX_EGGS = 3;
@@ -743,7 +774,7 @@ function defaultState() {
         progress: {}, dex: {},
         daily: { date: dateStr(), caught: 0, stages: 0, reviews: 0, claimed: [] },
         totals: { correct: 0, answered: 0 },
-        stats: {}, ach: {}, arena: { rank: 0, wins: 0, losses: 0, trophies: 0 }, forms: {}, shards: 0,
+        stats: {}, ach: {}, arena: { rank: 0, wins: 0, losses: 0, trophies: 0 }, forms: {}, shards: 0, trips: [], furn: [], placed: [],
         legacy: []
     };
 }
@@ -883,7 +914,7 @@ function satiety(m = activeMon()) {
 }
 function mood(m = activeMon()) {
     if (!m) return 0;
-    const rate = m.trait === 'lively' ? 1.5 : 3;
+    const rate = (m.trait === 'lively' ? 1.5 : 3) * (1 - 0.05 * Math.min(FURN_MAX, (S.placed || []).length));
     return Math.max(0, Math.round(m.mood - (Date.now() - m.moodAt) / 3600000 * rate));
 }
 function feed(n, m = activeMon()) { if (!m) return; m.satiety = Math.min(100, satiety(m) + n); m.fedAt = Date.now(); }
@@ -911,8 +942,7 @@ function xpMultiplier(m = activeMon()) {
     if (satiety(m) < 20) k *= 0.5;
     return k;
 }
-function addMonsterXP(n) {
-    const m = activeMon();
+function addMonsterXP(n, m = activeMon()) {
     if (!m) return 0;
     const gain = Math.max(1, Math.round(n * xpMultiplier(m)));
     const before = levelInfo(m);
@@ -1051,6 +1081,7 @@ function idleTick() {
     if (!w || !m) return;
     if (isSleeping()) { if (!w.classList.contains('sleeping')) renderHome(); return; }
     if (w.classList.contains('sleeping')) { renderHome(); return; }
+    if (Math.random() < .22) return monChat();
     if (satiety(m) < 25 && Math.random() < .5) return thought(pick(['🍖', '🍎', '🍰']));
     if (mood(m) < 30 && Math.random() < .5) return thought(pick(['🎾', '😢', '💭']));
     const acts = mood(m) >= 70 ? ['jump', 'spin', 'walk', 'look', 'wiggle', 'jump'] : ['look', 'walk', 'wiggle'];
@@ -1168,7 +1199,104 @@ function renameMonster(id) {
     if (name && name.trim()) { m.name = name.trim().slice(0, 8); save(); render(); if (G.modalOpen) openMon(m.id); }
 }
 
+function tripOf(id) { return (S.trips || []).find(t => t.mon === id); }
+function tripLeft(t) { return t.start + TRIPS.find(x => x.id === t.place).min * 60000 - Date.now(); }
+function fmtLeft(ms) { const m = Math.ceil(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)} 小時${m % 60 ? ` ${m % 60} 分` : ''}` : `${m} 分鐘`; }
+function tripsDone() { return (S.trips || []).filter(t => tripLeft(t) <= 0).length; }
+function openTrips() {
+    S.trips = (S.trips || []).filter(t => S.mons.some(m => m.id === t.mon));
+    const free = S.mons.filter(m => m.id !== S.active && !tripOf(m.id));
+    const place = TRIPS.find(t => t.id === G.tripPlace) || TRIPS[0];
+    const going = S.trips.map(t => {
+        const m = S.mons.find(x => x.id === t.mon), pl = TRIPS.find(x => x.id === t.place), left = tripLeft(t);
+        return `<div class="card p-3 flex items-center gap-3" style="${left <= 0 ? 'border-color:var(--orange);background:var(--orange-t)' : ''}">
+            <div class="text-4xl" style="${emojiStyle(m)}">${formOf(m).e}</div>
+            <div class="flex-1 min-w-0"><div class="font-black truncate">${esc(m.name)}</div><div class="text-xs" style="color:var(--muted)">${pl.e} ${pl.n}・${left <= 0 ? '回來了！' : `還要 ${fmtLeft(left)}`}</div></div>
+            ${left <= 0 ? `<button class="btn sm orange" onclick="collectTrip('${m.id}')">領取</button>` : '<span class="text-2xl">🧭</span>'}
+        </div>`; }).join('');
+    const start = S.trips.length >= TRIP_MAX ? `<p class="text-sm text-center mt-3" style="color:var(--muted)">探險隊最多同時 ${TRIP_MAX} 隻，等牠們回來吧</p>`
+        : !free.length ? `<p class="text-sm text-center mt-3" style="color:var(--muted)">${S.mons.length < 2 ? '只有一隻怪獸時要留下來當夥伴。孵出第二隻就能派牠去探險！' : '沒有其他有空的怪獸了'}</p>`
+        : `<div class="text-sm font-black mt-4 mb-2">要去哪裡？</div>
+        <div class="grid grid-cols-3 gap-2">${TRIPS.map(t => `<button class="card p-2 text-center" style="${t.id === place.id ? 'border-color:var(--green);background:var(--green-t)' : ''}" onclick="G.tripPlace='${t.id}'; openTrips()">
+            <div class="text-3xl">${t.e}</div><div class="text-xs font-black mt-1">${t.n}</div><div class="text-[10px]" style="color:var(--muted)">${fmtLeft(t.min * 60000)}</div></button>`).join('')}</div>
+        <div class="text-xs mt-2 p-2 rounded-xl" style="background:#f3f6f1;color:var(--muted)">可能帶回：🪙 ${place.coins[0]}～${place.coins[1]}、食物 ×${place.food}、經驗 +${place.xp}、親密 +${place.aff}${place.shard ? `、💎 ${place.shard >= 1 ? `${Math.floor(place.shard)}～${Math.ceil(place.shard)}` : '有機會'}` : ''}。等級和覺醒星數越高，金幣越多</div>
+        <div class="text-sm font-black mt-3 mb-2">派誰去？</div>
+        <div class="flex gap-2 overflow-x-auto noscroll pb-1">${free.map(m => `<button class="mini" onclick="sendTrip('${place.id}','${m.id}')"><div class="text-3xl" style="${emojiStyle(m)}">${formOf(m).e}</div><div class="text-xs font-black truncate">${esc(m.name)}</div><div class="text-[10px]" style="color:var(--muted)">Lv.${levelInfo(m).lv}</div></button>`).join('')}</div>`;
+    showModal(`<div class="card p-5 modal">
+        <div class="flex items-center justify-between mb-3"><h3 class="text-xl font-black">🧭 探險隊</h3><span class="pill" style="background:var(--green-t);color:var(--green-d)">${S.trips.length}/${TRIP_MAX} 出發中</span></div>
+        <div class="space-y-2">${going || '<p class="text-sm" style="color:var(--muted)">派牧場裡的怪獸出門探險，就算關掉 App 時間也會繼續走，回來會帶禮物給你。</p>'}</div>
+        ${start}
+        <button class="btn white w-full mt-4" onclick="closeModal(); render()">關閉</button>
+    </div>`);
+}
+function sendTrip(placeId, monId) {
+    const m = S.mons.find(x => x.id === monId), pl = TRIPS.find(t => t.id === placeId);
+    if (!m || !pl || m.id === S.active || tripOf(monId) || S.trips.length >= TRIP_MAX) return;
+    S.trips.push({ mon: monId, place: placeId, start: Date.now() });
+    playSound('pop');
+    save(); render(); openTrips();
+    toast(`${pl.e} ${m.name} 出發去${pl.n}了！${fmtLeft(pl.min * 60000)}後回來`, 'good', 3000);
+}
+function collectTrip(monId) {
+    const i = S.trips.findIndex(t => t.mon === monId), t = S.trips[i], m = S.mons.find(x => x.id === monId);
+    if (!t || !m || tripLeft(t) > 0) return;
+    const pl = TRIPS.find(x => x.id === t.place);
+    S.trips.splice(i, 1);
+    const coins = Math.round((pl.coins[0] + Math.random() * (pl.coins[1] - pl.coins[0])) * (1 + levelInfo(m).lv * 0.03 + starsOf(m) * 0.05));
+    const foods = Array.from({ length: pl.food }, () => pick(FOODS));
+    const shards = Math.floor(pl.shard) + (Math.random() < pl.shard % 1 ? 1 : 0);
+    S.coins += coins;
+    foods.forEach(f => { S.foods[f.id] = (S.foods[f.id] || 0) + 1; });
+    if (shards) S.shards = (S.shards || 0) + shards;
+    const xp = addMonsterXP(pl.xp, m);
+    addAffection(pl.aff, m); cheer(10, m);
+    playSound('win'); burst();
+    save(); render();
+    showModal(`<div class="card p-7 modal text-center">
+        <div class="text-sm font-black" style="color:var(--green-d)">${pl.e} ${pl.n}</div>
+        <div class="my-3">${monsterHTML(100, false, m)}</div>
+        <div class="text-2xl font-black">${esc(m.name)} 回來了！</div>
+        <p class="mt-1 text-sm" style="color:var(--muted)">「${pick(['我找到好多東西！', '外面好好玩，下次還要去', '我有想你喔', 'Look what I found!'])}」</p>
+        <div class="flex flex-wrap justify-center gap-2 mt-4">
+            <span class="pill" style="background:#fff6d6;color:#a67c00">🪙 +${coins}</span>
+            ${foods.map(f => `<span class="pill" style="background:var(--orange-t);color:var(--orange-d)">${f.e} ${f.name}</span>`).join('')}
+            ${shards ? `<span class="pill" style="background:var(--blue-t);color:var(--blue-d)">💎 +${shards}</span>` : ''}
+            <span class="pill" style="background:var(--purple-t);color:var(--purple-d)">⭐ 經驗 +${xp}</span>
+        </div>
+        <button class="btn w-full mt-5" onclick="closeModal()">辛苦了</button>
+    </div>`);
+}
+
+// ---------- 怪獸互動：牧場裡的怪獸會來串門子 ----------
+function visitorMon() {
+    const others = S.mons.filter(m => m.id !== S.active && !tripOf(m.id));
+    if (!others.length) return null;
+    let v = others.find(m => m.id === G.visitor);
+    if (!v || Date.now() - (G.visitorAt || 0) > 180000) { v = pick(others); G.visitor = v.id; G.visitorAt = Date.now(); }
+    return v;
+}
+function monChat() {
+    const st = $('mon-stage'), v = st?.querySelector('.visitor'), b = $('mon-bubble');
+    if (!v || !b || st.querySelector('.vis-bubble')) return;
+    const [a, r] = pick(CHATS);
+    const vb = document.createElement('div');
+    vb.className = 'vis-bubble';
+    vb.textContent = a;
+    st.appendChild(vb);
+    v.classList.remove('hop'); void v.offsetWidth; v.classList.add('hop');
+    setTimeout(() => { if (!document.body.contains(vb)) return; b.textContent = r; doAct(st.querySelector('.monster-wrap'), 'jump'); }, 1500);
+    setTimeout(() => vb.remove(), 4200);
+}
+function pokeVisitor() {
+    const v = S.mons.find(m => m.id === G.visitor);
+    if (!v) return;
+    playSound('pop');
+    if (Date.now() - (G.visitPetAt || 0) > 30000) { G.visitPetAt = Date.now(); cheer(3, v); cheer(3); renderHomeStats(); }
+    monChat();
+}
+
 function setActive(id) {
+    if (tripOf(id)) return toast('牠正在探險，回來之後才能當夥伴');
     S.active = id;
     save();
     closeModal();
@@ -1222,7 +1350,7 @@ function openMon(id) {
             </div>`; })()}
         <div class="flex gap-2 mt-5">
             <button class="btn white flex-1" onclick="closeModal()">關閉</button>
-            ${m.id === activeMon().id ? '<button class="btn flex-[2]" disabled>目前的夥伴</button>' : `<button class="btn flex-[2]" onclick="setActive('${m.id}')">設為冒險夥伴</button>`}
+            ${m.id === activeMon().id ? '<button class="btn flex-[2]" disabled>目前的夥伴</button>' : tripOf(m.id) ? '<button class="btn flex-[2]" disabled>🧭 探險中</button>' : `<button class="btn flex-[2]" onclick="setActive('${m.id}')">設為冒險夥伴</button>`}
         </div>
     </div>`);
 }
@@ -1611,7 +1739,11 @@ function renderHome() {
     <div class="card p-5 mt-1 anim-in scene ${bg.dark ? 'dark' : ''}" style="--sky-a:${bg.a};--sky-b:${bg.b};--ground:${bg.g};--ground-d:${bg.gd}">
         ${bg.deco.map((d, i) => `<span class="deco" style="left:${decoPos[i][0]}%;top:${decoPos[i][1]}%">${d}</span>`).join('')}
         <div class="flex justify-center mb-3 relative"><div id="mon-bubble" class="bubble text-center max-w-[260px]">${esc(isSleeping() ? 'Zzz…（夜深了，牠睡著了。點一下可以叫醒）' : monsterSay())}</div></div>
-        <div id="mon-stage" class="py-2 relative select-none" style="touch-action:pan-y">${isSleeping() ? monsterHTML(130).replace('class="monster-wrap"', 'class="monster-wrap sleeping"') + '<span class="zzz">💤</span><span class="zzz">💤</span>' : monsterHTML(130)}</div>
+        <div id="mon-stage" class="py-2 relative select-none" style="touch-action:pan-y">
+            ${(S.placed || []).slice(0, FURN_MAX).map((id, i) => { const f = FURN.find(x => x.id === id); return f ? `<span class="furn" style="${FURN_POS[i]}">${f.e}</span>` : ''; }).join('')}
+            ${isSleeping() ? monsterHTML(130).replace(/class="monster-wrap( awake)?"/, 'class="monster-wrap$1 sleeping"') + '<span class="zzz">💤</span><span class="zzz">💤</span>' : monsterHTML(130)}
+            ${(v => v && !isSleeping() ? `<button class="visitor" onclick="pokeVisitor()" aria-label="${esc(v.name)}"><span style="${emojiStyle(v)}">${formOf(v).e}</span></button>` : '')(visitorMon())}
+        </div>
         <p class="text-[11px] text-center relative" style="color:var(--muted)">點牠互動・在牠身上來回滑動可以撫摸</p>
         <div id="home-stats" class="relative rounded-2xl p-3 mt-2" style="background:rgba(255,255,255,.88)"></div>
         <div class="grid grid-cols-4 gap-2 mt-3 relative">
@@ -1625,11 +1757,11 @@ function renderHome() {
 
     <div class="card p-4 mt-4">
         <div class="flex items-center justify-between mb-3"><h3 class="font-black text-lg">🏡 怪獸牧場 <span class="text-sm" style="color:var(--muted)">${S.mons.length} 隻</span></h3>
-            <button class="btn sm orange" onclick="G.shopTab='egg'; openShop()">🥚 買蛋</button></div>
+            <div class="flex gap-1.5"><button class="btn sm ${tripsDone() ? 'orange' : 'white'}" onclick="openTrips()">🧭 ${tripsDone() ? '探險回來了！' : `探險${S.trips?.length ? ` ${S.trips.length}` : ''}`}</button><button class="btn sm orange" onclick="G.shopTab='egg'; openShop()">🥚 買蛋</button></div></div>
         <div class="flex gap-2 overflow-x-auto noscroll -mx-1 px-1 pb-1">
-            ${S.mons.map(x => `<button class="mini ${x.id === m.id ? 'on' : ''}" onclick="openMon('${x.id}')">
+            ${S.mons.map(x => `<button class="mini ${x.id === m.id ? 'on' : ''} ${tripOf(x.id) ? 'away' : ''}" onclick="openMon('${x.id}')">
                 <div class="text-3xl" style="${emojiStyle(x)}">${formOf(x).e}</div>
-                <div class="text-xs font-black truncate">${esc(x.name)}</div><div class="text-[10px]" style="color:var(--muted)">Lv.${levelInfo(x).lv}${x.id === m.id ? ' · 夥伴' : ''}</div></button>`).join('')}
+                <div class="text-xs font-black truncate">${esc(x.name)}</div><div class="text-[10px]" style="color:var(--muted)">Lv.${levelInfo(x).lv}${x.id === m.id ? ' · 夥伴' : tripOf(x.id) ? ' · 🧭探險' : ''}</div></button>`).join('')}
             ${S.eggs.map(e => { const sp = SPECIES.find(s => s.id === e.species); const ready = e.progress >= e.need; return `<button class="mini" style="${ready ? 'border-color:var(--orange);background:var(--orange-t)' : ''}" onclick="hatchEgg('${e.id}')">
                 <div class="text-3xl ${ready ? 'wiggle' : ''}" style="${eggStyle(sp)}${ready ? 'animation-iteration-count:infinite' : ''}">🥚</div>
                 <div class="text-[10px] font-black" style="color:${ready ? 'var(--orange-d)' : 'var(--muted)'}">${ready ? '可以孵化！' : `孵化 ${e.progress}/${e.need}`}</div>
@@ -2043,7 +2175,7 @@ function evolutionModal(m, fromIdx, toIdx, oldName = m.name) {
 }
 
 function openShop() {
-    const tabs = [['food', '🍰 食物'], ['wear', '🎩 裝扮'], ['bg', '🖼️ 背景'], ['egg', '🥚 蛋']];
+    const tabs = [['food', '🍰 食物'], ['wear', '🎩 裝扮'], ['bg', '🖼️ 背景'], ['furn', '🪴 擺設'], ['egg', '🥚 蛋']];
     const m = activeMon();
     let body = '';
     if (G.shopTab === 'food') {
@@ -2065,6 +2197,13 @@ function openShop() {
             return `<button class="card p-0 overflow-hidden text-center" style="${on ? 'border-color:var(--green)' : ''}" onclick="buyBg('${b.id}')">
                 <div class="h-16 flex items-center justify-center gap-1 text-xl" style="background:linear-gradient(180deg, ${b.a}, ${b.b})">${b.deco.slice(0, 3).join('')}</div>
                 <div class="p-2"><div class="font-black text-sm">${b.name}</div><div class="text-xs" style="color:${on ? 'var(--green-d)' : 'var(--muted)'}">${on ? '使用中' : owned ? '點擊使用' : `🪙 ${b.price}`}</div></div></button>`; }).join('')}</div>`;
+    } else if (G.shopTab === 'furn') {
+        body = `<div class="grid grid-cols-4 gap-2">${FURN.map(f => {
+            const owned = S.furn.includes(f.id), on = S.placed.includes(f.id);
+            return `<button class="card p-2 text-center" style="${on ? 'border-color:var(--green);background:var(--green-t)' : ''}" onclick="furnItem('${f.id}')">
+                <div class="text-3xl">${f.e}</div><div class="font-black text-[11px] mt-1">${f.name}</div>
+                <div class="text-[10px] mt-0.5" style="color:${on ? 'var(--green-d)' : 'var(--muted)'}">${on ? '擺放中' : owned ? '點擊擺放' : `🪙 ${f.price}`}</div></button>`; }).join('')}</div>
+            <p class="text-xs mt-2 text-center" style="color:var(--muted)">小屋最多擺 ${FURN_MAX} 件（目前 ${S.placed.length} 件），每擺一件怪獸的心情下降慢 5%</p>`;
     } else {
         body = `<div class="text-center p-4 rounded-2xl" style="background:var(--orange-t)">
             <div class="text-6xl wiggle" style="animation-iteration-count:infinite">🥚</div>
@@ -2076,7 +2215,7 @@ function openShop() {
     }
     showModal(`<div class="card p-5 modal">
         <div class="flex items-center justify-between mb-3"><h3 class="text-xl font-black">🛍️ 商店</h3><span class="pill" style="background:#fff6d6;color:#a67c00">🪙 ${S.coins}</span></div>
-        <div class="grid grid-cols-4 gap-1 mb-3">${tabs.map(([k, l]) => `<button class="chip !px-1 text-center ${G.shopTab === k ? 'active' : ''}" onclick="G.shopTab='${k}'; openShop()">${l}</button>`).join('')}</div>
+        <div class="grid grid-cols-5 gap-1 mb-3">${tabs.map(([k, l]) => `<button class="chip !px-0 text-center text-xs ${G.shopTab === k ? 'active' : ''}" onclick="G.shopTab='${k}'; openShop()">${l}</button>`).join('')}</div>
         ${body}
         <button class="btn white w-full mt-4" onclick="closeModal(); render()">關閉</button>
     </div>`);
@@ -2099,6 +2238,15 @@ function buyBg(id) {
     if (!b) return;
     if (!S.bgs.includes(id)) { if (!spend(b.price)) return; S.bgs.push(id); toast(`解鎖背景：${b.name}`, 'good'); }
     S.bg = id;
+    save(); openShop();
+}
+function furnItem(id) {
+    const f = FURN.find(x => x.id === id);
+    if (!f) return;
+    if (!S.furn.includes(id)) { if (!spend(f.price)) return; S.furn.push(id); toast(`買到擺設：${f.name}`, 'good'); }
+    if (S.placed.includes(id)) S.placed = S.placed.filter(x => x !== id);
+    else if (S.placed.length >= FURN_MAX) return toast(`小屋最多擺 ${FURN_MAX} 件，先收起一件吧`);
+    else S.placed.push(id);
     save(); openShop();
 }
 function buyEgg() {
