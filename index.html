@@ -429,8 +429,8 @@ SPECIES.forEach(s => { s.alt = ALT_FORMS[s.id]; });
 
 // 能力值：每族的成長傾向 [HP, 攻擊, 防禦, 速度] 倍率
 const SP_STAT = {
-    dragon: [1, 1.15, .95, 1],    sea:   [1.2, .95, 1.05, .9], cat:  [.95, 1.05, .9, 1.25], bird:  [.9, 1.05, .85, 1.35],
-    bunny:  [1.1, .9, 1, 1.1],    bug:   [1, .9, 1.3, .9],     dino: [1.15, 1.15, 1.1, .7], ghost: [.85, 1.15, .9, 1.2]
+    dragon: [1, 1.15, .95, 1],    sea:   [1.2, .95, 1.05, .9], cat:  [.95, 1.05, .9, 1.25], bird:  [.95, 1.05, .9, 1.35],
+    bunny:  [1.1, .9, 1, 1.1],    bug:   [1, 1, 1.3, .9],   dino: [1.15, 1.15, 1.1, .7], ghost: [.85, 1.15, .9, 1.2]
 };
 // 技能：Lv.3 / 6 / 9 各學會一招，在競技場使用；魔王戰連續答對 3 題時會自動發動最新學會的一招
 // pow 威力倍率（吃屬性相剋）、hits 連擊數、drain 吸血比例、crit 必定爆擊、self / foe 能力變化倍率、shield 護盾次數、pp 每場可用次數
@@ -989,7 +989,7 @@ const ACC_ALT = {
     bird:   { guard: [41, 36, 32, -3, 42, 15, 44], battle: [32, 55, 26, -8, 36, 32, 36] },
     bunny:  { guard: [41, 39, 28, 12, 44, 20, 40], battle: [41, 54, 32, -3, 42, 32, 46] },
     bug:    { guard: [35, 43, 32, 10, 41, 21, 46], battle: [47, 52, 34, -9, 55, 30, 44] },
-    dino:   { guard: [27, 45, 32, 0, 28, 24, 44],  battle: [26, 35, 36, -8, 33, 11, 44] },
+    dino:   { guard: [27, 45, 32, 0, 28, 24, 44],  battle: [26, 35, 36, -8, 33, 14, 44] },
     ghost:  { guard: [36, 41, 32, 10, 40, 19, 46], battle: [42, 45, 36, 0, 42, 23, 44] }
 };
 const ACC_FIT = {
@@ -997,8 +997,10 @@ const ACC_FIT = {
     crown: { s: .6, up: .38 }, tophat: { s: .7, up: .3 }, grad: { s: .8, up: .25 }, cap: { s: .8, up: .05 },
     bow: { s: .5, up: .2 }, flower: { s: .4, up: .1, dx: .3 }, phones: { s: 1.1, up: -.3 }
 };
+// 分支型態的頭比較大、脖子比較低：圍巾往下、耳機放大（用離線合成圖逐一對過 16 個型態）
+const ACC_FIT_ALT = { scarf: { s: .8, dy: .82 }, phones: { s: 1.45, up: -.2 } };
 function accHTML(m, it, size, accSize) {
-    const br = branchOf(m), f = ACC_FIT[it.id];
+    const br = branchOf(m), f = (br !== 'base' && ACC_FIT_ALT[it.id]) || ACC_FIT[it.id];
     const p = br === 'base' ? ACC_POS[m.species]?.[formIdx(levelInfo(m).lv)] : ACC_ALT[m.species]?.[br];
     if (!p || !f) return `<span class="acc ${it.slot}" style="font-size:${accSize}px">${it.emoji}</span>`;
     const [ex, ey, ew, rot, hx, hy, hw] = p, k = size * 1.15 / 100, isFace = it.slot === 'face';
@@ -2871,8 +2873,8 @@ const TRAINERS = [
 function elOf(species) { return ELEM[SP_EL[species] || 'fire']; }
 function typeMult(atkSp, defSp) {
     const a = SP_EL[atkSp], d = SP_EL[defSp];
-    if (ELEM[a].beats.includes(d)) return 1.5;
-    if (ELEM[d].beats.includes(a)) return 0.75;
+    if (ELEM[a].beats.includes(d)) return 1.3;
+    if (ELEM[d].beats.includes(a)) return 0.8;
     return 1;
 }
 function battleStats(lv, species) {
@@ -2884,8 +2886,11 @@ function battleSide(st, species, lv, name) {
     const skills = skillsOf(species, lv);
     return { ...st, hp: st.max, sp: species, name, mAtk: 1, mDef: 1, mSpd: 1, shield: 0, skills, pp: Object.fromEntries(skills.map(k => [k.n, k.pp])) };
 }
-// 速度越快越容易閃過對手的攻擊（3%～25%）
-function missChance(a, d) { return Math.min(.25, Math.max(.03, .06 + (d.spd * d.mSpd - a.spd * a.mSpd) * .012)); }
+// 速度越快越容易閃過對手的攻擊（3%～25%）；對手訓練師另外有 clumsy 的失誤率
+function missChance(a, d) { return Math.min(.3, Math.min(.25, Math.max(.03, .06 + (d.spd * d.mSpd - a.spd * a.mSpd) * .012)) + (a.clumsy || 0)); }
+// 對手的讓分：玩家要答對題目才能出招，對手每回合都能動，所以攻擊打八折、多 7% 失誤、兩成機率用技能
+// （數值由模擬器決定：同等級、八成答對率時勝率約 80～95%，被剋的組合約 20～60%）
+const FOE_ATK = 0.8, FOE_CLUMSY = 0.07, FOE_SKILL = 0.2;
 function multText(k) { return k > 1 ? '<b style="color:var(--green-d)">效果絕佳</b>' : k < 1 ? '<b style="color:var(--red-d)">效果不好</b>' : '普通'; }
 
 function openArena() {
@@ -2932,6 +2937,7 @@ function startBattle(i) {
     G.play = { kind: 'arena', phase: 'battle', finished: false };
     openPlay(); hideSheet();
     if (starsOf(m) >= 3) Object.keys(b.me.pp).forEach(k => { b.me.pp[k]++; });
+    b.foe.atk = Math.round(b.foe.atk * FOE_ATK); b.foe.clumsy = FOE_CLUMSY;
     b.onKey = e => {
         if (G.modalOpen || !G.game || G.game.id !== 'battle') return;
         if (/^[1-6]$/.test(e.key)) { const btn = document.querySelector(`#battle-panel [data-k="${e.key}"]`); if (btn && !btn.disabled) btn.click(); }
@@ -3123,9 +3129,9 @@ function doAction(who, act) {
 function foeTurn() {
     const b = G.game;
     if (!b || b.id !== 'battle') return;
-    // 對手有三成機率使用還有次數的技能（已經疊滿的強化、還有護盾時不重複用）
+    // 對手有兩成機率（FOE_SKILL）使用還有次數的技能（已經疊滿的強化、還有護盾時不重複用）
     const usable = b.foe.skills.filter(k => b.foe.pp[k.n] > 0 && !(k.shield && b.foe.shield) && !(k.self && !k.pow && Object.keys(k.self).some(s => b.foe['m' + s[0].toUpperCase() + s.slice(1)] > 1.5)));
-    const sk = usable.length && Math.random() < 0.3 ? pick(usable) : null;
+    const sk = usable.length && Math.random() < FOE_SKILL ? pick(usable) : null;
     setLog(doAction('foe', sk ? { sk } : { pow: 1, e: elOf(b.t.sp).e, label: ' 反擊' }));
     setTimeout(() => {
         if (G.game !== b) return;
