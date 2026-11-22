@@ -1,9 +1,10 @@
 // 單字怪獸 LinguaMon - Service Worker
 // 讓 App 可以安裝到手機，並在沒有網路時也能開啟（訓練場、小遊戲、競技場不需要 API）
-const VERSION = 'linguamon-v2';
+const VERSION = 'linguamon-v3';
 const SHELL = [
     './',
     './index.html',
+    './tailwind.css',
     './manifest.webmanifest',
     './icons/icon-192.png',
     './icons/icon-512.png',
@@ -52,7 +53,7 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // CDN（Tailwind、字型、Fluent 圖示、彩帶特效）：先用快取，背景再更新
+    // CDN（字型、Fluent 圖示、彩帶特效）：先用快取，背景再更新
     event.respondWith(
         caches.open(RUNTIME).then(cache => cache.match(req).then(hit => {
             const net = fetch(req).then(res => {

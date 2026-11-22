@@ -12,7 +12,6 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="單字怪獸">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -280,6 +279,8 @@
         .hidden { display: none !important; }
         @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
     </style>
+    <!-- Tailwind 工具類別：由 CLI 預先產生的靜態檔（不再依賴 cdn.tailwindcss.com），改了 class 之後要重新產生 -->
+    <link rel="stylesheet" href="tailwind.css">
 </head>
 <body>
 
