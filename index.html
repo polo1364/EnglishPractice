@@ -419,6 +419,37 @@ const ALT_FORMS = {
 };
 SPECIES.forEach(s => { s.alt = ALT_FORMS[s.id]; });
 
+// 能力值：每族的成長傾向 [HP, 攻擊, 防禦, 速度] 倍率
+const SP_STAT = {
+    dragon: [1, 1.15, .95, 1],    sea:   [1.2, .95, 1.05, .9], cat:  [.95, 1.05, .9, 1.25], bird:  [.9, 1.05, .85, 1.35],
+    bunny:  [1.1, .9, 1, 1.1],    bug:   [1, .9, 1.3, .9],     dino: [1.15, 1.15, 1.1, .7], ghost: [.85, 1.15, .9, 1.2]
+};
+// 技能：Lv.3 / 6 / 9 各學會一招，在競技場使用；魔王戰連續答對 3 題時會自動發動最新學會的一招
+// pow 威力倍率（吃屬性相剋）、hits 連擊數、drain 吸血比例、crit 必定爆擊、self / foe 能力變化倍率、shield 護盾次數、pp 每場可用次數
+const SKILL_LV = [3, 6, 9];
+const SKILLS = {
+    dragon: [{ n: '熱身吼叫', e: '📣', self: { atk: 1.3 }, pp: 2 },  { n: '連環火球', e: '☄️', pow: .8, hits: 2, pp: 3 },            { n: '傳說烈焰', e: '🌋', pow: 2.2, pp: 1 }],
+    sea:    [{ n: '泡泡護盾', e: '🫧', shield: 2, pp: 2 },           { n: '大漩渦',   e: '🌀', pow: 1.2, foe: { spd: .7 }, pp: 3 },   { n: '深海海嘯', e: '🌊', pow: 2, pp: 1 }],
+    cat:    [{ n: '磨爪子',   e: '🐾', self: { atk: 1.3 }, pp: 2 },  { n: '貓步連抓', e: '💢', pow: .8, hits: 2, pp: 3 },            { n: '月影突襲', e: '🌙', pow: 1.4, crit: true, pp: 2 }],
+    bird:   [{ n: '順風',     e: '🍃', self: { spd: 1.6 }, pp: 2 },  { n: '羽刃',     e: '🪶', pow: 1.4, pp: 3 },                    { n: '天空俯衝', e: '🦅', pow: 2.1, pp: 1 }],
+    bunny:  [{ n: '撒嬌',     e: '🥺', foe: { atk: .75 }, pp: 2 },   { n: '愛心吸取', e: '💗', pow: 1.1, drain: .5, pp: 3 },         { n: '彩虹光束', e: '🌈', pow: 2, pp: 1 }],
+    bug:    [{ n: '結繭',     e: '🧶', self: { def: 1.6 }, pp: 2 },  { n: '吸花蜜',   e: '🌼', pow: 1.1, drain: .5, pp: 3 },         { n: '蝶粉風暴', e: '🌪️', pow: 1.7, foe: { atk: .8 }, pp: 2 }],
+    dino:   [{ n: '岩石皮膚', e: '🪨', self: { def: 1.6 }, pp: 2 },  { n: '尾巴掃擊', e: '💫', pow: 1.3, foe: { def: .75 }, pp: 3 }, { n: '遠古衝撞', e: '💥', pow: 2.2, pp: 1 }],
+    ghost:  [{ n: '嚇一跳',   e: '😱', foe: { atk: .75 }, pp: 2 },   { n: '靈魂吸取', e: '👻', pow: 1.1, drain: .5, pp: 3 },         { n: '星爆',     e: '🌟', pow: 2.1, pp: 1 }]
+};
+const STAT_NAME = { atk: '攻擊', def: '防禦', spd: '速度' };
+function skillsOf(species, lv) { return (SKILLS[species] || []).filter((_, i) => lv >= SKILL_LV[i]); }
+function skillDesc(sk) {
+    const a = [];
+    if (sk.pow) a.push(`威力×${sk.pow}${sk.hits > 1 ? ` ${sk.hits}連擊` : ''}`);
+    if (sk.drain) a.push('吸血');
+    if (sk.crit) a.push('必定爆擊');
+    Object.keys(sk.self || {}).forEach(k => a.push(`${STAT_NAME[k]}↑`));
+    Object.keys(sk.foe || {}).forEach(k => a.push(`對手${STAT_NAME[k]}↓`));
+    if (sk.shield) a.push(`護盾 ${sk.shield} 次`);
+    return a.join('・');
+}
+
 const TRAITS = [
     { id: 'glutton', name: '貪吃', icon: '🍽️', desc: '食物效果 +50%' },
     { id: 'lively',  name: '活潑', icon: '⚡', desc: '心情下降速度減半' },
@@ -819,7 +850,7 @@ function setBranch(id, b) {
     toast(`${formOf(m).e} 變成${branchMeta(b).name}的${formOf(m).n}了！`, 'good', 3000);
 }
 function monBattleStats(m) {
-    const s = battleStats(levelInfo(m).lv), b = isFinal(m) ? branchOf(m) : '';
+    const s = battleStats(levelInfo(m).lv, m.species), b = isFinal(m) ? branchOf(m) : '';
     if (b === 'guard') s.max = Math.round(s.max * 1.2);
     if (b === 'battle') s.atk = Math.round(s.atk * 1.15);
     return s;
@@ -878,6 +909,8 @@ function addMonsterXP(n) {
             G.modalQueue.push(() => evolutionModal(m, fb, fa, oldName));
         }
         else G.modalQueue.push(() => levelUpModal(m, after.lv));
+        const learned = (SKILLS[m.species] || []).filter((_, i) => SKILL_LV[i] > before.lv && SKILL_LV[i] <= after.lv);
+        if (learned.length) G.modalQueue.push(() => skillModal(m, learned));
     }
     return gain;
 }
@@ -1138,6 +1171,8 @@ function openMon(id) {
             <span class="pill" style="background:var(--purple-t);color:var(--purple-d)">${tr.icon} ${tr.name}：${tr.desc}</span>
             <span class="pill" style="background:var(--red-t);color:var(--red-d)">${'❤️'.repeat(hearts(m)) || '🤍'} 親密 ${m.affection}</span>
         </div>
+        <div class="grid grid-cols-4 gap-1 mt-3 text-center">${(st => [['❤️', 'HP', st.max], ['⚔️', '攻擊', st.atk], ['🛡️', '防禦', st.def], ['💨', '速度', st.spd]])(monBattleStats(m)).map(([e, n, v]) => `<div class="py-1.5 rounded-xl" style="background:#f3f6f1"><div class="text-[10px]" style="color:var(--muted)">${e} ${n}</div><div class="font-black">${v}</div></div>`).join('')}</div>
+        <div class="grid grid-cols-3 gap-1 mt-1 text-center">${SKILLS[sp.id].map((sk, i) => { const ok = li.lv >= SKILL_LV[i]; return `<div class="py-1.5 px-1 rounded-xl" style="background:${ok ? 'var(--blue-t)' : '#f3f6f1'}"><div class="text-xs font-black">${ok ? `${sk.e} ${sk.n}` : `🔒 Lv.${SKILL_LV[i]}`}</div><div class="text-[10px] leading-tight" style="color:var(--muted)">${ok ? skillDesc(sk) : '還沒學會'}</div></div>`; }).join('')}</div>
         <div class="flex items-end justify-center gap-3 mt-5">${sp.forms.map((f0, i) => { const f = i === 2 && fi === 2 ? formOf(m) : f0; return `
             <div class="text-center"><div class="text-4xl" style="${i <= fi ? emojiStyle(m) : 'filter:brightness(0);opacity:.2'}">${i === 2 && fi < 2 ? '❓' : f.e}</div>
             <div class="text-xs mt-1" style="color:${i <= fi ? 'var(--ink)' : 'var(--muted)'}">${i <= fi ? f.n : '???'}</div><div class="text-[10px]" style="color:var(--muted)">Lv.${FORM_LV[i]}</div></div>
@@ -1942,6 +1977,18 @@ function levelUpModal(m, lv) {
     </div>`);
 }
 
+function skillModal(m, learned) {
+    playSound('levelup'); burst();
+    showModal(`<div class="card p-7 modal text-center">
+        <div class="text-sm font-black" style="color:var(--blue-d)">NEW SKILL!</div>
+        <div class="my-3">${monsterHTML(96, false, m)}</div>
+        <div class="text-2xl font-black">${esc(m.name)} 學會了新技能！</div>
+        ${learned.map(sk => `<div class="mt-3 p-3 rounded-2xl text-left flex items-center gap-3" style="background:var(--blue-t)"><span class="text-3xl">${sk.e}</span><span><b>${sk.n}</b><span class="block text-xs" style="color:var(--muted)">${skillDesc(sk)}・每場 ${sk.pp} 次</span></span></div>`).join('')}
+        <p class="mt-3 text-sm" style="color:var(--muted)">到競技場試試看！魔王戰連續答對 3 題也會自動發動</p>
+        <button class="btn blue w-full mt-4" onclick="closeModal()">太棒了</button>
+    </div>`);
+}
+
 function evolutionModal(m, fromIdx, toIdx, oldName = m.name) {
     const sp = speciesOf(m);
     const from = sp.forms[fromIdx], to = toIdx === 2 ? formOf(m) : sp.forms[toIdx], br = branchMeta(branchOf(m));
@@ -2651,7 +2698,17 @@ function typeMult(atkSp, defSp) {
     if (ELEM[d].beats.includes(a)) return 0.75;
     return 1;
 }
-function battleStats(lv) { return { max: 50 + lv * 8, atk: 9 + lv * 2 }; }
+function battleStats(lv, species) {
+    const [h, a, d, s] = SP_STAT[species] || [1, 1, 1, 1];
+    return { max: Math.round((50 + lv * 8) * h), atk: Math.round((10 + lv * 2.3) * a), def: Math.round((4 + lv * 1.2) * d), spd: Math.round((8 + lv * 1.5) * s) };
+}
+// 對戰中的一方：能力值 + 場上的能力變化倍率、護盾、技能剩餘次數
+function battleSide(st, species, lv, name) {
+    const skills = skillsOf(species, lv);
+    return { ...st, hp: st.max, sp: species, name, mAtk: 1, mDef: 1, mSpd: 1, shield: 0, skills, pp: Object.fromEntries(skills.map(k => [k.n, k.pp])) };
+}
+// 速度越快越容易閃過對手的攻擊（3%～25%）
+function missChance(a, d) { return Math.min(.25, Math.max(.03, .06 + (d.spd * d.mSpd - a.spd * a.mSpd) * .012)); }
 function multText(k) { return k > 1 ? '<b style="color:var(--green-d)">效果絕佳</b>' : k < 1 ? '<b style="color:var(--red-d)">效果不好</b>' : '普通'; }
 
 function openArena() {
@@ -2667,10 +2724,10 @@ function openArena() {
         <div class="card p-4 flex items-center gap-3 arena-me">
             <div class="text-5xl" style="${emojiStyle(m)}">${formOf(m).e}</div>
             <div class="flex-1"><div class="font-black text-lg">${esc(m.name)} <span class="text-sm" style="color:var(--muted)">Lv.${li.lv}</span></div>
-                <div class="text-xs" style="color:var(--muted)">屬性 ${el.e}${el.n}・HP ${monBattleStats(m).max}・攻擊 ${monBattleStats(m).atk}・戰績 ${S.arena.wins} 勝 ${S.arena.losses} 敗</div>
+                <div class="text-xs" style="color:var(--muted)">屬性 ${el.e}${el.n}・HP ${monBattleStats(m).max}・攻 ${monBattleStats(m).atk}・防 ${monBattleStats(m).def}・速 ${monBattleStats(m).spd}・戰績 ${S.arena.wins} 勝 ${S.arena.losses} 敗</div>
                 <div class="text-xs mt-1" style="color:var(--muted)">${el.e}${el.n} 剋 ${el.beats.map(b => ELEM[b].e + ELEM[b].n).join('、')}</div></div>
         </div>
-        <p class="text-xs my-3" style="color:var(--muted)">💡 答對單字題才能出招！屬性技威力大但題目較難；親密度越高越容易爆擊。換夥伴可以到小屋的牧場。</p>
+        <p class="text-xs my-3" style="color:var(--muted)">💡 答對單字題才能出招！Lv.3 / 6 / 9 會學到新技能；速度快的一方先攻、也比較容易閃避；親密度越高越容易爆擊。換夥伴可以到小屋的牧場。</p>
         <div class="space-y-2">${TRAINERS.map((t, i) => {
             const open = i <= S.arena.rank, beaten = i < S.arena.rank;
             const sp = SPECIES.find(s => s.id === t.sp), fe = elOf(t.sp);
@@ -2692,18 +2749,22 @@ function startBattle(i) {
     stopGame();
     let words = Object.values(S.dex).filter(d => d.mean);
     if (words.length < 4) words = [...words, ...BASIC_WORDS.filter(b => !words.some(x => x.word === b.word))];
-    const me = monBattleStats(m), foe = battleStats(t.lv);
+    const foeName = SPECIES.find(s => s.id === t.sp).forms[formIdx(t.lv)].n;
     const b = G.game = { id: 'battle', i, t, words, heals: 2,
-        me: { ...me, hp: me.max, sp: m.species }, foe: { ...foe, hp: foe.max, sp: t.sp }, busy: false, log: `${t.name} 派出了 ${SPECIES.find(s => s.id === t.sp).forms[formIdx(t.lv)].n}！` };
+        me: battleSide(monBattleStats(m), m.species, levelInfo(m).lv, m.name), foe: battleSide(battleStats(t.lv, t.sp), t.sp, t.lv, foeName), busy: false, log: `${t.name} 派出了 ${foeName}！` };
     G.play = { kind: 'arena', phase: 'battle', finished: false };
     openPlay(); hideSheet();
     b.onKey = e => {
         if (G.modalOpen || !G.game || G.game.id !== 'battle') return;
-        if (/^[1-4]$/.test(e.key)) { const btn = document.querySelector(`#battle-panel [data-k="${e.key}"]`); if (btn && !btn.disabled) btn.click(); }
+        if (/^[1-6]$/.test(e.key)) { const btn = document.querySelector(`#battle-panel [data-k="${e.key}"]`); if (btn && !btn.disabled) btn.click(); }
     };
     document.addEventListener('keydown', b.onKey);
     renderBattle();
     playSound('pop');
+    if (b.foe.spd > b.me.spd) {
+        b.busy = true;
+        setTimeout(() => { if (G.game !== b) return; setLog(`💨 ${esc(foeName)} 的速度比較快，搶先出手！`); setTimeout(foeTurn, 900); }, 700);
+    }
 }
 
 function renderBattle() {
@@ -2733,12 +2794,16 @@ function renderBattle() {
 
 function renderMoves() {
     const b = G.game, m = activeMon(), el = elOf(m.species);
-    const k = typeMult(m.species, b.t.sp);
+    const k = typeMult(m.species, b.t.sp), color = SPECIES.find(s => s.id === m.species).color;
+    const mv = (key, kind, icon, name, note, dis, border) => `<button class="move" data-k="${key}" ${kind ? `onclick="chooseMove('${kind}')"` : ''} ${dis ? 'disabled' : ''} style="padding:.5rem .55rem;gap:.4rem;${border ? `border-color:${border}` : ''}"><span class="text-2xl">${icon}</span><span class="flex-1 text-left min-w-0"><b class="block text-sm truncate">${name}</b><span class="block text-[11px] leading-tight" style="color:var(--muted)">${note}</span></span></button>`;
     $('play-foot').innerHTML = '';
-    $('battle-panel').innerHTML = `<div class="grid grid-cols-1 gap-2">
-        <button class="move" data-k="1" onclick="chooseMove('hit')"><span class="text-2xl">💥</span><span class="flex-1 text-left"><b>撞擊</b><span class="block text-xs" style="color:var(--muted)">選中文意思・穩定傷害</span></span><span class="kbd">1</span></button>
-        <button class="move" data-k="2" onclick="chooseMove('special')" style="border-color:${SPECIES.find(s => s.id === m.species).color}"><span class="text-2xl">${el.e}</span><span class="flex-1 text-left"><b>${el.n}屬性必殺</b><span class="block text-xs" style="color:var(--muted)">看中文選英文・威力 ×1.6・對手 ${multText(k)}</span></span><span class="kbd">2</span></button>
-        <button class="move" data-k="3" onclick="chooseMove('heal')" ${b.heals ? '' : 'disabled'}><span class="text-2xl">💚</span><span class="flex-1 text-left"><b>恢復（剩 ${b.heals} 次）</b><span class="block text-xs" style="color:var(--muted)">聽音辨字・回復 35% HP</span></span><span class="kbd">3</span></button>
+    $('battle-panel').innerHTML = `<div class="grid grid-cols-2 gap-2">
+        ${mv(1, 'hit', '💥', '撞擊', '選中文意思・穩定傷害')}
+        ${mv(2, 'special', el.e, `${el.n}屬性必殺`, `看中文選英文・威力×1.6・${multText(k)}`, false, color)}
+        ${mv(3, 'heal', '💚', `恢復（剩 ${b.heals}）`, '聽音辨字・回復 35% HP', !b.heals)}
+        ${SKILLS[m.species].map((sk, i) => b.me.skills.includes(sk)
+            ? mv(4 + i, 'sk' + i, sk.e, `${sk.n}（剩 ${b.me.pp[sk.n]}）`, skillDesc(sk), !b.me.pp[sk.n], color)
+            : mv(4 + i, '', '🔒', `Lv.${SKILL_LV[i]} 學會`, '還沒學會的技能', true)).join('')}
     </div>`;
 }
 
@@ -2746,10 +2811,13 @@ function chooseMove(kind) {
     const b = G.game;
     if (!b || b.busy) return;
     if (kind === 'heal' && !b.heals) return;
+    const sk = kind.startsWith('sk') ? SKILLS[b.me.sp][Number(kind[2])] : null;
+    if (sk && !b.me.pp[sk.n]) return;
     const w = pick(b.words);
-    const type = kind === 'hit' ? 'meaning' : kind === 'heal' ? 'listen' : (blankSentence(w) && Math.random() < .5 ? 'fill' : 'reverse');
+    // 越強的招式題目越難：撞擊與 Lv.3 技能選中文、Lv.6 技能看中文選英文、必殺與 Lv.9 技能可能出填空
+    const type = kind === 'hit' || kind === 'sk0' ? 'meaning' : kind === 'heal' ? 'listen' : kind === 'sk1' ? 'reverse' : (blankSentence(w) && Math.random() < .5 ? 'fill' : 'reverse');
     const c = makeChallenge(type, w, b.words);
-    b.move = kind; b.q = c;
+    b.move = kind; b.sk = sk; b.q = c;
     const prompt = type === 'meaning' ? `<div class="text-3xl font-black">${esc(w.word)}</div>`
         : type === 'listen' ? `<button class="btn blue" onclick="speak(G.game.q.w.word)">🔊 再聽一次</button>`
         : type === 'fill' ? `<div class="text-lg">${esc(c.sentence).replace('_____', '<u>　　　</u>')}</div>`
@@ -2824,42 +2892,69 @@ function battleAnswer(i) {
             playSound('coin');
             setLog(`💚 ${esc(m.name)} 回復了 ${amt} HP！`);
         } else {
-            const k = b.move === 'special' ? 1.6 * typeMult(m.species, b.t.sp) : 1;
-            const crit = Math.random() < 0.05 + hearts(m) * 0.04;
-            const dmg = Math.round(b.me.atk * k * (0.9 + Math.random() * 0.2) * (crit ? 1.5 : 1));
-            lunge('me');
-            setTimeout(() => { b.foe.hp -= dmg; battleFx('foe', `-${dmg}`, 'var(--red-d)'); refreshHp(); }, 220);
-            playSound(crit ? 'combo' : 'correct');
-            setLog(`${b.move === 'special' ? elOf(m.species).e : '💥'} ${esc(m.name)} 造成 ${dmg} 點傷害！${crit ? ' <b style="color:var(--orange-d)">會心一擊！</b>' : ''}${b.move === 'special' ? `（${multText(typeMult(m.species, b.t.sp))}）` : ''}`);
+            const el = elOf(m.species);
+            setLog(doAction('me', b.sk ? { sk: b.sk } : b.move === 'special' ? { pow: 1.6, e: el.e, label: ` 的${el.n}屬性必殺` } : { pow: 1, plain: true, e: '💥', label: ' 的撞擊' }));
         }
         refreshHp();
         setTimeout(() => {
+            if (G.game !== b) return;
             if (b.foe.hp <= 0) return endBattle(true);
             foeTurn();
-        }, 1100);
+        }, 1300);
     }, 450);
+}
+
+// 執行一次攻擊或技能（who = 'me' | 'foe'），回傳戰鬥紀錄文字
+function doAction(who, act) {
+    const b = G.game, other = who === 'me' ? 'foe' : 'me', a = b[who], d = b[other], sk = act.sk;
+    const head = `${sk ? sk.e : act.e} ${esc(a.name)}${sk ? ` 使出「${sk.n}」` : act.label}`;
+    const pow = sk ? sk.pow : act.pow, notes = [];
+    let main = '';
+    if (sk) a.pp[sk.n]--;
+    if (pow) {
+        lunge(who);
+        if (Math.random() < missChance(a, d)) { playSound('pop'); return `${head}，但是被 ${esc(d.name)} 躲開了！`; }
+        const k = act.plain ? 1 : typeMult(a.sp, d.sp);
+        const crit = !!sk?.crit || Math.random() < (who === 'me' ? 0.05 + hearts(activeMon()) * 0.04 : 0.05);
+        const guard = d.shield > 0 ? .5 : 1;
+        if (guard < 1) { d.shield--; notes.push('護盾擋下一半'); }
+        let total = 0;
+        for (let h = 0; h < (sk?.hits || 1); h++) {
+            const dmg = Math.max(1, Math.round(a.atk * a.mAtk * pow * k * (0.9 + Math.random() * 0.2) * (crit ? 1.5 : 1) * guard * 60 / (60 + d.def * d.mDef)));
+            total += dmg;
+            setTimeout(() => { if (G.game !== b) return; d.hp -= dmg; battleFx(other, `-${dmg}`, 'var(--red-d)'); refreshHp(); if (other === 'me') buzz(60); }, 220 + h * 300);
+        }
+        main = `，造成 ${total} 點傷害`;
+        if (sk?.hits > 1) notes.push(`${sk.hits} 連擊`);
+        if (crit) notes.push('<b style="color:var(--orange-d)">會心一擊</b>');
+        if (k !== 1) notes.push(multText(k));
+        if (sk?.drain) {
+            const heal = Math.round(total * sk.drain);
+            setTimeout(() => { if (G.game !== b) return; a.hp = Math.min(a.max, a.hp + heal); battleFx(who, `+${heal}`, 'var(--green-d)'); refreshHp(); }, 600);
+            notes.push(`吸收 ${heal} HP`);
+        }
+        playSound(who === 'foe' ? 'wrong' : crit ? 'combo' : 'correct');
+    } else playSound('coin');
+    const cap = k => 'm' + k[0].toUpperCase() + k.slice(1);
+    Object.entries(sk?.self || {}).forEach(([k, v]) => { a[cap(k)] = Math.min(2, a[cap(k)] * v); notes.push(`自己的${STAT_NAME[k]}提升`); });
+    Object.entries(sk?.foe || {}).forEach(([k, v]) => { d[cap(k)] = Math.max(.5, d[cap(k)] * v); notes.push(`${esc(d.name)} 的${STAT_NAME[k]}下降`); });
+    if (sk?.shield) { a.shield = sk.shield; notes.push(`接下來 ${sk.shield} 次受到的傷害減半`); }
+    return `${head}${main}！${notes.length ? `（${notes.join('・')}）` : ''}`;
 }
 
 function foeTurn() {
     const b = G.game;
     if (!b || b.id !== 'battle') return;
-    const m = activeMon();
-    const name = SPECIES.find(s => s.id === b.t.sp).forms[formIdx(b.t.lv)].n;
-    if (Math.random() < 0.12) {
-        setLog(`${name} 的攻擊被躲開了！`);
-    } else {
-        const k = typeMult(b.t.sp, m.species);
-        const dmg = Math.round(b.foe.atk * k * (0.85 + Math.random() * 0.3));
-        lunge('foe');
-        setTimeout(() => { b.me.hp -= dmg; battleFx('me', `-${dmg}`, 'var(--red-d)'); refreshHp(); buzz(60); }, 220);
-        playSound('wrong');
-        setLog(`${elOf(b.t.sp).e} ${name} 反擊，造成 ${dmg} 點傷害！（${multText(k)}）`);
-    }
+    // 對手有三成機率使用還有次數的技能（已經疊滿的強化、還有護盾時不重複用）
+    const usable = b.foe.skills.filter(k => b.foe.pp[k.n] > 0 && !(k.shield && b.foe.shield) && !(k.self && !k.pow && Object.keys(k.self).some(s => b.foe['m' + s[0].toUpperCase() + s.slice(1)] > 1.5)));
+    const sk = usable.length && Math.random() < 0.3 ? pick(usable) : null;
+    setLog(doAction('foe', sk ? { sk } : { pow: 1, e: elOf(b.t.sp).e, label: ' 反擊' }));
     setTimeout(() => {
+        if (G.game !== b) return;
         if (b.me.hp <= 0) return endBattle(false);
         b.busy = false;
         renderMoves();
-    }, 1200);
+    }, 1300);
 }
 
 function endBattle(win) {
@@ -3201,7 +3296,11 @@ function resolve(ok, given) {
     if (ok) {
         S.totals.correct++;
         p.done++; p.combo++; p.maxCombo = Math.max(p.maxCombo, p.combo); S.stats.maxCombo = Math.max(S.stats.maxCombo || 0, p.combo);
-        if (p.kind === 'boss') p.bossHp--;
+        if (p.kind === 'boss') {
+            p.bossHp--;
+            const am = activeMon(), sk = am && skillsOf(am.species, levelInfo(am).lv).pop();
+            if (sk && p.combo % 3 === 0 && p.bossHp > 0) { p.bossHp--; toast(`${sk.e} ${am.name} 使出「${sk.n}」！魔王多受 1 點傷害`, 'gold', 2600); }
+        }
         if (p.kind === 'review' && S.dex[key]) { S.dex[key].correct++; S.dex[key].seen = Date.now(); srsHit(S.dex[key], true); S.coins += 2; cheer(1); bumpQuest('reviews'); S.stats.reviews = (S.stats.reviews || 0) + 1; }
         if (p.kind === 'fun') S.coins += 1;
         progressEggs(1);
