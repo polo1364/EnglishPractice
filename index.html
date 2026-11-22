@@ -458,6 +458,28 @@ function skillDesc(sk) {
     return a.join('・');
 }
 
+// 單字餵養：每族有 3 個愛吃的主題（每族至少一個在前 5 區，一開始就吃得到）。
+// 用愛吃主題的單字餵牠會記在 m.ate，每吃 10 個全能力 +1%（最多 +10%）
+const SP_FAV = {
+    dragon: ['food', 'game', 'work'],     sea:   ['travel', 'health', 'nature'], cat:  ['daily', 'home', 'fun'],        bird:  ['travel', 'transit', 'social'],
+    bunny:  ['shop', 'feel', 'fashion'],  bug:   ['school', 'nature', 'art'],    dino: ['school', 'science', 'money'],  ghost: ['travel', 'tech', 'law']
+};
+const FAV_STEP = 10, FAV_MAX = 0.10, SNACK_DAILY = 8;
+function favRegions(m) { return (SP_FAV[m?.species] || []).map(regionMeta); }
+function isFav(m, regionId) { return !!m && (SP_FAV[m.species] || []).includes(regionId); }
+function ateCount(m) { return Object.keys(m?.ate || {}).length; }
+function favBonus(m) { return Math.min(FAV_MAX, Math.floor(ateCount(m) / FAV_STEP) * 0.01); }
+function eatWords(m, keys) {
+    const before = ateCount(m);
+    m.ate = m.ate || {};
+    keys.forEach(k => { m.ate[k] = 1; });
+    const after = ateCount(m);
+    if (favBonus(m) > Math.min(FAV_MAX, Math.floor(before / FAV_STEP) * 0.01)) toast(`🍽️ ${m.name} 吃了 ${after} 個愛吃的單字，全能力 +${Math.round(favBonus(m) * 100)}%！`, 'gold', 3400);
+}
+function snacksLeft(m) { return SNACK_DAILY - (m.snackDay === dateStr() ? m.snacks || 0 : 0); }
+// 圖鑑裡這隻怪獸還沒吃過的愛吃單字
+function snackWords(m) { return Object.entries(S.dex).filter(([k, d]) => d.mean && isFav(m, d.region) && !m.ate?.[k]).map(([k]) => k); }
+
 const TRAITS = [
     { id: 'glutton', name: '貪吃', icon: '🍽️', desc: '食物效果 +50%' },
     { id: 'lively',  name: '活潑', icon: '⚡', desc: '心情下降速度減半' },
@@ -886,7 +908,7 @@ function monBattleStats(m) {
     const s = battleStats(levelInfo(m).lv, m.species), b = isFinal(m) ? branchOf(m) : '';
     if (b === 'guard') s.max = Math.round(s.max * 1.2);
     if (b === 'battle') s.atk = Math.round(s.atk * 1.15);
-    const k = 1 + AWAKEN_STAT * starsOf(m);
+    const k = 1 + AWAKEN_STAT * starsOf(m) + favBonus(m);
     Object.keys(s).forEach(key => { s[key] = Math.round(s[key] * k); });
     return s;
 }
@@ -1032,6 +1054,7 @@ function monsterSay(m = activeMon()) {
     if (mood(m) < 30) return pick(['好無聊喔…陪我玩嘛 🎾', '摸摸我好不好…', '今天心情有點差…']);
     if (!S.lastActive || S.lastActive !== dateStr()) return pick(['今天還沒冒險喔！', '一起去抓今天的單字吧！']);
     if (hearts(m) >= 4 && Math.random() < .3) return pick(['最喜歡你了！💕', '我們是最強的搭檔！', '有你在我什麼單字都不怕']);
+    if (Math.random() < .15) return `我想吃「${pick(favRegions(m)).name}」的單字！`;
     const t = { glutton: '（盯著你的口袋看）有零食嗎？', lively: '快快快！我們去冒險！', smart: '我剛剛偷偷背了三個單字', clingy: '不要丟下我一個人喔…' }[m.trait];
     return Math.random() < .25 ? t : pick(speciesOf(m).say);
 }
@@ -1191,7 +1214,63 @@ function openFood() {
                 <div class="text-4xl">${f.e}</div><div class="font-black text-sm mt-1">${f.name} ×${S.foods[f.id] || 0}</div>
                 <div class="text-xs mt-0.5" style="color:var(--muted)">飽足 +${f.food}・心情 +${f.mood}</div>
             </button>`).join('')}</div>
+        ${(() => {
+            const favs = favRegions(m), words = shuffle(snackWords(m)).slice(0, 6), left = snacksLeft(m);
+            return `<div class="mt-3 p-3 rounded-2xl" style="background:var(--orange-t)">
+                <div class="flex items-center justify-between"><div class="font-black text-sm">😋 單字點心</div><span class="text-xs" style="color:var(--muted)">今天還能吃 ${Math.max(0, left)} 個</span></div>
+                <div class="text-xs mt-1" style="color:var(--muted)">${esc(m.name)} 愛吃：${favs.map(r => `${r.emoji}${r.name}`).join('、')}。答對意思就能餵牠，每吃 ${FAV_STEP} 個全能力 +1%（已吃 ${ateCount(m)} 個）</div>
+                ${words.length && left > 0 ? `<div class="flex flex-wrap gap-2 mt-2">${words.map(k => `<button class="pill" style="background:#fff;border:2px solid var(--orange);color:var(--orange-d)" onclick="snackQuiz('${k.replace(/'/g, "\\'")}')">${esc(S.dex[k].word)}</button>`).join('')}</div>`
+                    : `<div class="text-xs font-black mt-2" style="color:var(--orange-d)">${left <= 0 ? '今天吃夠多了，明天再來餵牠' : `圖鑑裡沒有牠沒吃過的愛吃單字了，去${favs.map(r => `「${r.name}」`).join('')}抓新的吧！`}</div>`}
+            </div>`; })()}
         <div class="flex gap-2 mt-4"><button class="btn white flex-1" onclick="closeModal()">關閉</button><button class="btn orange flex-1" onclick="G.shopTab='food'; openShop()">🛍️ 買食物</button></div>
+    </div>`);
+}
+function snackQuiz(key) {
+    const m = activeMon(), w = S.dex[key];
+    if (!m || !w || m.ate?.[key]) return;
+    if (snacksLeft(m) <= 0) return toast('今天吃夠多單字點心了，明天再來');
+    let pool = Object.values(S.dex).filter(d => d.mean);
+    if (pool.length < 4) pool = [...pool, ...BASIC_WORDS.filter(b => !pool.some(x => x.word === b.word))];
+    const c = G.snack = makeChallenge('meaning', w, pool);
+    showModal(`<div class="card p-5 modal text-center">
+        <div class="text-xs font-black" style="color:var(--muted)">答對意思，才能餵給 ${esc(m.name)} 吃</div>
+        <div class="text-3xl font-black mt-3">${esc(w.word)}</div>
+        <button class="btn blue sm mt-2" onclick="speak(G.snack.w.word)">🔊 聽發音</button>
+        <div class="grid grid-cols-2 gap-2 mt-4">${c.options.map((o, i) => `<button class="opt center" onclick="snackAnswer(${i})"><span class="flex-1 break-words">${esc(o)}</span></button>`).join('')}</div>
+        <button class="btn white w-full mt-4" onclick="G.snack=null; openFood()">返回</button>
+    </div>`);
+    speak(w.word);
+}
+function snackAnswer(i) {
+    const c = G.snack, m = activeMon();
+    if (!c || !m) return;
+    G.snack = null;
+    const key = c.w.word.toLowerCase(), d = S.dex[key], ok = c.options[i] === c.answer;
+    S.totals.answered++;
+    if (ok) {
+        S.totals.correct++; d.correct++; d.seen = Date.now(); srsHit(d, true);
+        m.snacks = (m.snackDay === dateStr() ? m.snacks || 0 : 0) + 1; m.snackDay = dateStr();
+        eatWords(m, [key]);
+        feed(8); cheer(4); addMonsterXP(3); progressEggs(1);
+        playSound('correct');
+        toast(`😋 ${m.name} 吃掉了「${c.w.word}」！`, 'good');
+    } else {
+        d.wrong++; d.seen = Date.now(); srsHit(d, false);
+        playSound('wrong');
+        toast(`答錯了…${c.w.word} = ${c.w.mean}。牠沒吃到`, 'bad', 3400);
+    }
+    markActive();
+    save(); renderHome(); openFood();
+}
+function ateModal(id) {
+    const m = S.mons.find(x => x.id === id);
+    if (!m) return;
+    const keys = Object.keys(m.ate || {}).filter(k => S.dex[k]);
+    showModal(`<div class="card p-5 modal">
+        <h3 class="text-xl font-black">🍽️ ${esc(m.name)} 吃過的單字</h3>
+        <p class="text-xs mt-1 mb-3" style="color:var(--muted)">共 ${keys.length} 個・全能力 +${Math.round(favBonus(m) * 100)}%（每 ${FAV_STEP} 個 +1%，最多 +${Math.round(FAV_MAX * 100)}%）</p>
+        ${keys.length ? `<div class="flex flex-wrap gap-2">${keys.map(k => { const d = S.dex[k], r = regionMeta(d.region); return `<span class="pill" style="background:${r.t};color:${r.cd}">${esc(d.word)} <span style="opacity:.7">${esc(d.mean)}</span></span>`; }).join('')}</div>` : '<p class="text-sm" style="color:var(--muted)">還沒吃過。帶牠去愛吃的主題抓單字，或在「餵食」裡餵單字點心。</p>'}
+        <button class="btn white w-full mt-4" onclick="openMon('${m.id}')">返回</button>
     </div>`);
 }
 
@@ -1342,6 +1421,10 @@ function openMon(id) {
                 ${on ? `<div class="text-[10px] font-black mt-1" style="color:${sp.color}">目前型態</div>` : can ? '<div class="text-[10px] font-black mt-1" style="color:var(--blue-d)">點一下切換</div>' : ''}
             </div>`; }).join('')}
         </div>
+        <button class="mt-4 p-3 rounded-2xl text-left w-full" style="background:var(--orange-t);border:2px solid #ffd3b0" onclick="ateModal('${m.id}')">
+            <div class="flex items-center justify-between"><div class="font-black">🍽️ 愛吃的單字</div><span class="pill" style="background:#fff;color:var(--orange-d)">已吃 ${ateCount(m)}・能力 +${Math.round(favBonus(m) * 100)}%</span></div>
+            <div class="text-xs mt-1" style="color:var(--muted)">${favRegions(m).map(r => `${r.emoji}${r.name}`).join('、')}。帶牠去這些地方抓單字，或用「餵食」餵單字點心 ›</div>
+        </button>
         ${(() => {
             const n = starsOf(m), max = AWAKEN_COST.length, cost = AWAKEN_COST[n], have = S.shards || 0;
             const next = n >= max ? '已經覺醒到最高星' : `下一星：全能力 +${Math.round(AWAKEN_STAT * 100)}%${n === 2 ? '、技能次數 +1' : n === 4 ? '、金色光環' : ''}`;
@@ -1868,7 +1951,7 @@ function renderMap() {
 
     $('tab-map').innerHTML = `
     <div class="flex gap-2 overflow-x-auto noscroll -mx-4 px-4 pb-3 pt-1">
-        ${REGIONS.map((x, i) => `<button class="chip ${x.id === r.id ? 'active' : ''} ${regionUnlocked(i) ? '' : 'locked'}" onclick="selectRegion('${x.id}', ${i})">${regionUnlocked(i) ? x.emoji : '🔒'} ${x.name}</button>`).join('')}
+        ${REGIONS.map((x, i) => `<button class="chip ${x.id === r.id ? 'active' : ''} ${regionUnlocked(i) ? '' : 'locked'}" onclick="selectRegion('${x.id}', ${i})">${regionUnlocked(i) ? x.emoji : '🔒'} ${x.name}${isFav(activeMon(), x.id) ? ' 😋' : ''}</button>`).join('')}
     </div>
     <div class="card p-4 anim-in" style="background:${r.t};border-color:${r.c}55">
         <div class="flex items-center gap-3">
@@ -3606,17 +3689,21 @@ function finishRun() {
         const firstClear = !!pr && pr.stars[p.idx] === 0;
         if (pr) pr.stars[p.idx] = Math.max(pr.stars[p.idx], stars);
         let newCount = 0;
+        const fresh = [];
         p.words.forEach(w => {
             const k = w.word.toLowerCase();
             if (!S.dex[k]) {
                 S.dex[k] = { word: w.word, pos: w.pos || '', ipa: w.ipa || '', mean: w.mean, example: w.example || '', trans: w.trans || '', distractors: w.distractors || [], rarity: w.rarity, region: p.region.id, caught: Date.now(), correct: 1, wrong: 0, seen: Date.now(), ...(w.parts ? { parts: w.parts, partMeans: w.partMeans } : {}),
                     // 關卡中答錯過的單字：立刻進錯題本、今天就要複習
                     box: 1, due: p.wrongSet?.has(k) ? Date.now() : Date.now() + DAY, ...(p.wrongSet?.has(k) ? { lastWrong: Date.now(), wrong: 1 } : {}) };
-                newCount++;
+                newCount++; fresh.push(k);
             }
         });
         coins = 10 + stars * 5 + (p.maxCombo >= 5 ? 10 : 0);
         xp = newCount * 8 + stars * 4;
+        const eater = activeMon();
+        const ate = eater && isFav(eater, p.region.id) ? fresh.length : 0;
+        if (ate) { eatWords(eater, fresh); xp += ate * 4; }
         food = newCount;   // 每個新單字 = 1 顆單字蘋果
         S.foods.apple = (S.foods.apple || 0) + food;
         cheer(5 + stars * 3);
@@ -3624,7 +3711,8 @@ function finishRun() {
         bumpQuest('stages'); bumpStat('stages'); if (stars === 3) bumpStat('perfect');
         headline = stars === 3 ? '完美捕捉！' : '關卡完成！';
         extra = `<div class="mt-5 text-left"><div class="text-sm font-black mb-2">📖 收進圖鑑（${newCount} 個新單字）</div>
-            <div class="flex flex-wrap gap-2">${p.words.map(w => `<span class="pill" style="background:${p.region.t};color:${p.region.cd}">${esc(w.word)}</span>`).join('')}</div></div>`;
+            <div class="flex flex-wrap gap-2">${p.words.map(w => `<span class="pill" style="background:${p.region.t};color:${p.region.cd}">${esc(w.word)}</span>`).join('')}</div></div>
+            ${ate ? `<div class="mt-3 p-3 rounded-2xl text-sm font-black" style="background:var(--orange-t);color:var(--orange-d)">😋 這是 ${esc(eater.name)} 愛吃的主題！牠吃掉了 ${ate} 個新單字，經驗 +${ate * 4}</div>` : ''}`;
         if (firstClear && p.idx === STAGES_PER_REGION - 1) extra += `<div class="mt-4 p-3 rounded-2xl text-sm font-black" style="background:var(--red-t);color:var(--red-d)">${p.region.boss} 魔王「${esc(p.region.bossName)}」出現在地圖上了！</div>`;
     } else if (p.kind === 'boss') {
         const pr = prog(p.region.id);
