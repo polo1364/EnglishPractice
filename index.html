@@ -348,6 +348,7 @@
 const STORE_KEY = 'linguamon_v2';
 const KEY_STORE = 'claude_api_key';
 const MODEL_STORE = 'claude_model';
+const BACKUP_KEY = 'linguamon_backup';   // 重新開始前自動留一份，可以從「我的」復原
 const DEFAULT_MODEL = 'claude-haiku-5-5';
 const MODELS_WITH_FALLBACK = ['claude-opus-5-5', 'claude-sonnet-5-5'];
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
@@ -993,8 +994,10 @@ function loadState() {
 }
 
 const S = loadState();
-// 提示紀錄：舊存檔第一次載入時，把已經成立的提示直接標成看過，免得一次跳一堆（TIPS 在後面才定義，所以延後執行）
-setTimeout(() => { if (!S.tips) { S.tips = {}; if (S.mons.length) TIPS.forEach(t => { try { if (t.when()) S.tips[t.id] = 1; } catch {} }); } }, 0);
+// 提示紀錄：沒有紀錄的舊存檔，把已經成立的提示直接標成看過，免得一次跳一堆（TIPS 在後面才定義，所以啟動時延後執行）
+function initTips() { if (!S.tips) { S.tips = {}; if (S.mons.length) TIPS.forEach(t => { try { if (t.when()) S.tips[t.id] = 1; } catch {} }); } }
+function replaceState(d) { Object.keys(S).forEach(k => delete S[k]); Object.assign(S, d); }
+setTimeout(initTips, 0);
 let apiKey = safeGet(KEY_STORE) || '';
 let model = safeGet(MODEL_STORE) || DEFAULT_MODEL;
 const G = { tab: 'home', mapRegion: null, dexRegion: 'all', dexQuery: '', dexMode: 'words', shopTab: 'food', play: null, modalQueue: [], modalOpen: false, prefetch: {}, chat: { scenario: CHAT_SCENARIOS[0], history: [], busy: false, started: false } };
@@ -2349,7 +2352,8 @@ function renderMe() {
             <button class="btn white sm" onclick="$('import-file').click()">⬆️ 匯入存檔</button>
         </div>
         <input id="import-file" type="file" accept="application/json" class="hidden" onchange="importData(this)">
-        <button class="btn red sm w-full mt-2" onclick="resetAll()">🗑️ 重置全部進度</button>
+        ${(b => b ? `<button class="btn white sm w-full mt-2" onclick="restoreBackup()">↩️ 復原重新開始前的進度（${dateStr(new Date(b.at))}・${b.data.mons.length} 隻怪獸）</button>` : '')(backupInfo())}
+        <button class="btn red sm w-full mt-2" onclick="resetAll()">🔄 重新開始（清空進度）</button>
     </div>
     <p class="text-center text-xs mt-6" style="color:var(--muted)">鍵盤：1–4 作答 · Enter 繼續 · R 重播發音</p>`;
 }
@@ -2386,19 +2390,75 @@ function importData(input) {
         const d = migrate(safeParse(t));
         if (!d || typeof d.dex !== 'object' || !Array.isArray(d.mons)) return toast('這不是有效的存檔檔案', 'bad');
         if (!confirm('匯入會覆蓋目前的進度，確定嗎？')) return;
-        Object.keys(S).forEach(k => delete S[k]);
-        Object.assign(S, d);
+        replaceState(d);
+        initTips();
+        G.prefetch = {}; G.mapRegion = null; G.visitor = null;
         save(); render(); toast('存檔已匯入', 'good');
     }).finally(() => { input.value = ''; });
 }
 
+// ---------- 重新開始 ----------
+// 清空進度回到選夥伴；設定（難度、語速、音效、API Key）保留。重新開始前的進度會自動留一份，可以復原
 function resetAll() {
-    if (!confirm('確定要重置全部進度嗎？\n怪獸、圖鑑、金幣和地圖進度都會清空，無法復原！')) return;
-    Object.keys(S).forEach(k => delete S[k]);
-    Object.assign(S, defaultState());
-    S.legacy = [];
-    G.prefetch = {}; G.mapRegion = null;
-    save(); switchTab('home'); starterModal();
+    G.resetArmed = false;
+    const lv = Math.max(1, ...S.mons.map(x => levelInfo(x).lv));
+    showModal(`<div class="card p-6 modal text-center">
+        <div class="text-6xl">🔄</div>
+        <div class="text-xl font-black mt-2">要重新開始嗎？</div>
+        <p class="text-sm mt-2" style="color:var(--muted)">所有進度會清空，回到選擇第一個夥伴的地方。</p>
+        <div class="grid grid-cols-3 gap-2 mt-4">${[['🐾', `${S.mons.length} 隻`, `最高 Lv.${lv}`], ['📖', Object.keys(S.dex).length, '個單字'], ['🪙', S.coins, '金幣']].map(([i, v, l]) => `<div class="p-2 rounded-xl" style="background:var(--red-t)"><div class="text-xl">${i}</div><div class="font-black">${v}</div><div class="text-[10px]" style="color:var(--muted)">${l}</div></div>`).join('')}</div>
+        <div class="text-left text-xs mt-4 space-y-1" style="color:var(--muted)">
+            <div>• 會清空：怪獸、蛋、圖鑑、金幣、道具、地圖與競技場進度、成就、收集獎勵</div>
+            <div>• 會保留：單字難度、發音速度、音效、Claude API 設定</div>
+            <div>• 現在的進度會自動留一份備份，之後可以在「我的 › 資料」復原</div>
+        </div>
+        <button id="reset-go" class="btn red w-full mt-5" onclick="confirmReset()">重新開始</button>
+        <div class="grid grid-cols-2 gap-2 mt-2"><button class="btn white sm" onclick="exportData()">⬇️ 先匯出存檔</button><button class="btn white sm" onclick="closeModal()">取消</button></div>
+    </div>`);
+}
+// 要按兩次才會真的清空，避免手滑
+function confirmReset() {
+    if (!G.resetArmed) {
+        G.resetArmed = true;
+        const b = $('reset-go');
+        if (b) b.textContent = '⚠️ 再按一次，確定重新開始';
+        return;
+    }
+    if (S.mons.length) safeSet(BACKUP_KEY, JSON.stringify({ at: Date.now(), data: S }));
+    const keep = { level: S.level, sound: S.sound, rate: S.rate };
+    stopGame(); stopTimer();
+    if (G.play) closePlay();
+    replaceState({ ...defaultState(), ...keep, tips: {} });
+    Object.assign(G, { prefetch: {}, mapRegion: null, visitor: null, monTab: 'info', dexMode: 'words', dexRegion: 'all', dexQuery: '', tipQueued: false, resetArmed: false });
+    G.modalQueue.length = 0;
+    save();
+    closeModal();
+    switchTab('home');
+    starterModal();
+    toast('已經重新開始。之前的進度留了一份備份，可以在「我的 › 資料」復原', 'good', 4200);
+}
+function backupInfo() {
+    const b = safeParse(safeGet(BACKUP_KEY));
+    return b && b.data && Array.isArray(b.data.mons) && b.data.mons.length ? b : null;
+}
+// 復原重新開始前的進度；目前的進度會變成新的備份，所以可以換回來
+function restoreBackup() {
+    const b = backupInfo();
+    if (!b) return toast('沒有可以復原的備份', 'bad');
+    const d = migrate(b.data);
+    if (!d) return toast('備份讀不出來', 'bad');
+    if (!confirm(`要復原 ${dateStr(new Date(b.at))} 重新開始前的進度嗎？\n目前的進度會改存成備份，之後還能換回來。`)) return;
+    if (S.mons.length) safeSet(BACKUP_KEY, JSON.stringify({ at: Date.now(), data: S }));
+    else try { localStorage.removeItem(BACKUP_KEY); } catch {}
+    stopGame(); stopTimer();
+    replaceState(d);
+    initTips();
+    Object.assign(G, { prefetch: {}, mapRegion: null, visitor: null, monTab: 'info', tipQueued: false });
+    G.modalQueue.length = 0;
+    save();
+    closeModal();
+    switchTab('home');
+    toast('已經復原之前的進度', 'good');
 }
 
 // ============================================================
